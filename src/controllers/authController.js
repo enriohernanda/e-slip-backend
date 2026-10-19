@@ -3,7 +3,7 @@ const authService = require('../services/authService');
 const authController = {
   /**
    * Endpoint POST /api/eslip/v1/auth/login
-   * Body: { "username": "budi", "password": "password123" }
+   * Body: { "username": "aryan", "password": "password111" }
    */
   async login(req, res, next) {
     try {

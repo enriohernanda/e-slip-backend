@@ -1,5 +1,4 @@
 // Konfigurasi koneksi database PostgreSQL
-// Saat ini menggunakan mode mock karena koneksi database belum diberikan oleh kantor.
 
 const isMock = process.env.DB_MOCK !== 'false';
 

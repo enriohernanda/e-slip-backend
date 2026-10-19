@@ -2,12 +2,6 @@ const userRepository = require('../repositories/userRepository');
 const hcmClient = require('../utils/hcmClient');
 
 const authService = {
-  /**
-   * Menangani alur login:
-   * 1. Hit API HCM eksternal (Proxy) menggunakan username & password
-   * 2. Jika valid, sinkronisasikan/upsert data user ke database lokal berdasarkan NIK
-   * 3. Kembalikan data user + token ke controller
-   */
   async login(username, password) {
     // 1. Panggil HCM eksternal menggunakan username
     const hcmUser = await hcmClient.authenticate(username, password);
