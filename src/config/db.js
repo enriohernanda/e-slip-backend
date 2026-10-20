@@ -1,27 +1,26 @@
-// Konfigurasi koneksi database PostgreSQL
+const { Pool } = require('pg');
 
-const isMock = process.env.DB_MOCK !== 'false';
+// Inisialisasi PostgreSQL Connection Pool menggunakan kredensial dari .env
+const pool = new Pool({
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT, 10) || 5432,
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'admin',
+  database: process.env.DB_NAME || 'eslip_db',
+  max: 20, // Maksimal 20 koneksi konkuren
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
 
-let pool = null;
+pool.on('connect', () => {
+  // console.log('[DB] Koneksi baru terbentuk ke PostgreSQL');
+});
 
-if (!isMock) {
-  // Ketika PostgreSQL siap digunakan:
-  // 1. Install driver: npm install pg
-  // 2. Uncomment baris berikut:
-  /*
-  const { Pool } = require('pg');
-  pool = new Pool({
-    host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 5432,
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'eslip_db',
-  });
-  */
-}
+pool.on('error', (err) => {
+  console.error('[DB Error] Kesalahan pada PostgreSQL Pool:', err.message);
+});
 
 module.exports = {
-  isMock,
   pool,
-  status: isMock ? 'Mode Mock (In-Memory)' : 'Terhubung ke PostgreSQL',
+  query: (text, params) => pool.query(text, params),
 };
