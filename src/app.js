@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const authController = require('./controllers/authController');
+const slipRoutes = require('./routes/slipRoutes');
 const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
@@ -19,6 +20,9 @@ app.get('/', (req, res) => {
 
 // Endpoint Autentikasi
 app.post('/api/eslip/v1/auth/login', authController.login);
+
+// Endpoint Transaksi E-Slip
+app.use('/api/eslip/v1/slips', slipRoutes);
 
 // Handler untuk route yang tidak ditemukan (404)
 app.use((req, res) => {
