@@ -15,6 +15,7 @@ const authService = {
     const user = await userRepository.findByUsername(username);
 
     if (!user) {
+      console.warn(`[AUTH] Login gagal: User "${username}" tidak ditemukan di tabel users.`);
       const error = new Error('Kredensial tidak valid (Username atau password salah)');
       error.statusCode = 401;
       error.code = 'UNAUTHORIZED';
@@ -23,6 +24,7 @@ const authService = {
 
     // 2. Cek apakah akun aktif
     if (!user.is_active) {
+      console.warn(`[AUTH] Login gagal: Akun "${username}" berstatus non-aktif (is_active = false).`);
       const error = new Error('Akun karyawan tidak aktif di sistem. Hubungi Administrator / HR.');
       error.statusCode = 403;
       error.code = 'FORBIDDEN';
@@ -35,6 +37,7 @@ const authService = {
       password === user.password;
 
     if (!isPasswordValid) {
+      console.warn(`[AUTH] Login gagal: Password untuk user "${username}" tidak cocok.`);
       const error = new Error('Kredensial tidak valid (Username atau password salah)');
       error.statusCode = 401;
       error.code = 'UNAUTHORIZED';
