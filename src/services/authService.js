@@ -1,4 +1,5 @@
 import * as userRepository from '../repositories/userRepository.js';
+import { createSessionToken } from '../utils/authToken.js';
 import { createHttpError } from '../utils/httpError.js';
 
 let bcrypt;
@@ -59,6 +60,6 @@ export async function login(username, password) {
       is_active: updatedUser.is_active,
       last_synced_at: updatedUser.last_synced_at,
     },
-    token: `eslip-token-${updatedUser.nik}-${Date.now()}`,
+    token: createSessionToken(updatedUser.nik),
   };
 }

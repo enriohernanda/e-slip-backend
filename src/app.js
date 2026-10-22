@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import * as authController from './controllers/authController.js';
+import { authRoutes } from './routes/authRoutes.js';
 import { slipRoutes } from './routes/slipRoutes.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { sendError } from './utils/httpResponse.js';
@@ -20,7 +20,7 @@ app.get('/', (req, res) => {
 });
 
 // Endpoint Autentikasi
-app.post('/api/eslip/v1/auth/login', authController.login);
+app.use('/api/eslip/v1/auth', authRoutes);
 
 // Endpoint Transaksi E-Slip
 app.use('/api/eslip/v1/slips', slipRoutes);

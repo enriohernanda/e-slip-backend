@@ -1,5 +1,13 @@
 import * as userRepository from '../repositories/userRepository.js';
+import { extractNikFromToken } from '../utils/authToken.js';
 import { sendError } from '../utils/httpResponse.js';
+
+// Ekstrak 5 digit kode outlet dari store_code untuk format nomor slip
+function toOutletId(storeCode) {
+  const rawCode = storeCode || '10011';
+  const numericMatch = rawCode.match(/\d+/);
+  return numericMatch ? numericMatch[0].padStart(5, '0').slice(-5) : '10011';
+}
 
 /**
  * Middleware untuk memvalidasi token otentikasi pada request yang membutuhkan login.
@@ -19,24 +27,7 @@ export async function authMiddleware(req, res, next) {
       return sendError(res, 401, 'UNAUTHORIZED', 'Akses ditolak: Token autentikasi tidak ditemukan');
     }
 
-    // Format token yang didukung:
-    // 1. eslip-token-{nik}-{timestamp}
-    // 2. hcm-mock-token-{nik}-{timestamp}
-    // 3. dummy-token-{nik}-{timestamp}
-    let nik = null;
-    const prefixes = ['eslip-token-', 'hcm-mock-token-', 'dummy-token-'];
-    for (const prefix of prefixes) {
-      if (token.startsWith(prefix)) {
-        const remaining = token.slice(prefix.length);
-        const lastDashIndex = remaining.lastIndexOf('-');
-        if (lastDashIndex !== -1) {
-          nik = remaining.slice(0, lastDashIndex);
-        } else {
-          nik = remaining;
-        }
-        break;
-      }
-    }
+    const nik = extractNikFromToken(token);
 
     // Jika token tidak cocok dengan format yang dikenali
     if (!nik) {
@@ -53,11 +44,6 @@ export async function authMiddleware(req, res, next) {
       return sendError(res, 403, 'FORBIDDEN', 'Akun sales tidak aktif. Hubungi administrator.');
     }
 
-    // Ekstrak 5 digit kode outlet untuk format nomor slip
-    const rawCode = user.store_code || '10011';
-    const numericMatch = rawCode.match(/\d+/);
-    const outletId = numericMatch ? numericMatch[0].padStart(5, '0').slice(-5) : '10011';
-
     // Tempelkan user context ke request
     req.user = {
       id: user.id,
@@ -65,7 +51,7 @@ export async function authMiddleware(req, res, next) {
       name: user.name,
       username: user.username,
       store_code: user.store_code,
-      outlet_id: outletId,
+      outlet_id: toOutletId(user.store_code),
       token,
     };
 
