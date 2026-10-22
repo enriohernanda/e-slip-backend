@@ -3,7 +3,7 @@ import { normalizeSql } from './harness.js';
 // Expected SQL, whitespace-normalized, captured from the pre-refactor implementation.
 export const SQL = {
   findUserForLogin:
-    'SELECT id, nik, name, username, password, store_code, is_active, last_synced_at, created_at, updated_date FROM users WHERE username = $1 OR nik = $1 LIMIT 1;',
+    'SELECT id, nik, name, username, password, store_code, is_active, last_synced_at, created_at, updated_date FROM users WHERE username = $1 LIMIT 1;',
   findUserByNik:
     'SELECT id, nik, name, username, store_code, is_active, last_synced_at FROM users WHERE nik = $1 LIMIT 1;',
   findUserById:
@@ -54,7 +54,7 @@ export function listSlipsSql(whereClause, limitIndex) {
 
 // Route patterns (matched against normalized SQL).
 export const Q = {
-  findUserForLogin: /FROM users WHERE username = \$1 OR nik = \$1/,
+  findUserForLogin: /FROM users WHERE username = \$1 LIMIT/,
   findUserByNik: /FROM users WHERE nik = \$1/,
   updateLastLogin: /^UPDATE users SET last_synced_at/,
   count: /^SELECT COUNT\(\*\)/,
