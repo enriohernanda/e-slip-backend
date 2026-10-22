@@ -1,10 +1,10 @@
-const userRepository = require('../repositories/userRepository');
+import * as userRepository from '../repositories/userRepository.js';
 
 /**
  * Middleware untuk memvalidasi token otentikasi pada request yang membutuhkan login.
  * Mengambil identitas user secara otoritatif dari database dan menempelkan ke req.user.
  */
-const authMiddleware = async (req, res, next) => {
+export async function authMiddleware(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
 
@@ -102,6 +102,4 @@ const authMiddleware = async (req, res, next) => {
       data: null,
     });
   }
-};
-
-module.exports = authMiddleware;
+}

@@ -1,5 +1,6 @@
-// Middleware terpusat untuk menangani error di aplikasi Express
-const errorHandler = (err, req, res, next) => {
+// Middleware terpusat untuk menangani error di aplikasi Express.
+// Express mengenali error handler dari 4 parameternya, jadi `next` harus tetap ada.
+export function errorHandler(err, req, res, next) {
   console.error('[Error Logger]:', err);
 
   const statusCode = err.statusCode || 500;
@@ -12,6 +13,4 @@ const errorHandler = (err, req, res, next) => {
     message: errorMessage,
     data: null,
   });
-};
-
-module.exports = errorHandler;
+}

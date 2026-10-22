@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { assertJson, stmt, useHarness } from './helpers/harness.mjs';
-import { ACTIVE_USER, Q, SQL, TOKEN, dbError } from './helpers/fixtures.mjs';
+import { assertJson, stmt, useHarness } from './helpers/harness.js';
+import { ACTIVE_USER, Q, SQL, TOKEN, dbError } from './helpers/fixtures.js';
 
 const h = useHarness();
 

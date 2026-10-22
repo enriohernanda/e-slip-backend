@@ -1,10 +1,10 @@
-const express = require('express');
-const cors = require('cors');
-const authController = require('./controllers/authController');
-const slipRoutes = require('./routes/slipRoutes');
-const errorHandler = require('./middlewares/errorHandler');
+import express from 'express';
+import cors from 'cors';
+import * as authController from './controllers/authController.js';
+import { slipRoutes } from './routes/slipRoutes.js';
+import { errorHandler } from './middlewares/errorHandler.js';
 
-const app = express();
+export const app = express();
 
 // Middleware global
 app.use(cors());
@@ -36,5 +36,3 @@ app.use((req, res) => {
 
 // Error handling middleware terpusat
 app.use(errorHandler);
-
-module.exports = app;

@@ -1,8 +1,8 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import bcrypt from 'bcryptjs';
-import { assertErrorLogged, assertJson, stmt, useHarness } from './helpers/harness.mjs';
-import { FIXED_NOW, Q, SQL, dbError } from './helpers/fixtures.mjs';
+import { assertErrorLogged, assertJson, stmt, useHarness } from './helpers/harness.js';
+import { FIXED_NOW, Q, SQL, dbError } from './helpers/fixtures.js';
 
 const h = useHarness();
 

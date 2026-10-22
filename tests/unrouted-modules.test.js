@@ -3,9 +3,9 @@
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import { stmt, useHarness } from './helpers/harness.mjs';
-import { loadModule } from './helpers/loader.mjs';
-import { FIXED_NOW, SQL } from './helpers/fixtures.mjs';
+import { stmt, useHarness } from './helpers/harness.js';
+import { loadModule } from './helpers/loader.js';
+import { FIXED_NOW, SQL } from './helpers/fixtures.js';
 
 const h = useHarness();
 

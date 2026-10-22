@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { assertErrorLogged, assertJson, useHarness } from './helpers/harness.mjs';
+import { assertErrorLogged, assertJson, useHarness } from './helpers/harness.js';
 
 const h = useHarness();
 

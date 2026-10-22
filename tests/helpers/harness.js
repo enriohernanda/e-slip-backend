@@ -1,6 +1,6 @@
 import { after, before, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadApp, loadModule } from './loader.mjs';
+import { loadApp, loadModule } from './loader.js';
 
 export function normalizeSql(text) {
   return String(text).replace(/\s+/g, ' ').trim();

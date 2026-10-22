@@ -2,14 +2,16 @@
  * Runner Script Seeder Database PostgreSQL
  * Menggunakan pg (node-postgres)
  */
-require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
+import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+
+dotenv.config();
 
 async function runSeed() {
   let pg;
   try {
-    pg = require('pg');
+    ({ default: pg } = await import('pg'));
   } catch (err) {
     console.error('\n[PERHATIAN] Driver "pg" belum terinstall.');
     console.log('Jalankan perintah berikut di folder e-slip-backend:');
@@ -37,7 +39,7 @@ async function runSeed() {
     const client = await pool.connect();
     console.log('Berhasil terhubung ke database.');
 
-    const seedPath = path.join(__dirname, 'seed.sql');
+    const seedPath = path.join(import.meta.dirname, 'seed.sql');
     const sql = fs.readFileSync(seedPath, 'utf8');
 
     console.log('Menyuntikkan dummy data ke database...');

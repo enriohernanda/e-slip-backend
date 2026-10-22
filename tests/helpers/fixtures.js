@@ -1,4 +1,4 @@
-import { normalizeSql } from './harness.mjs';
+import { normalizeSql } from './harness.js';
 
 // Expected SQL, whitespace-normalized, captured from the pre-refactor implementation.
 export const SQL = {
