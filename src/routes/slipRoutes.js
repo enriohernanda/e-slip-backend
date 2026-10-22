@@ -5,9 +5,20 @@ const authMiddleware = require('../middlewares/authMiddleware');
 
 /**
  * Route: POST /api/eslip/v1/slips
- * Terproteksi authMiddleware (membutuhkan Bearer token sales aktif)
+ * Membuat E-Slip baru (terproteksi authMiddleware)
  */
 router.post('/', authMiddleware, slipController.createSlip);
 
-module.exports = router;
+/**
+ * Route: GET /api/eslip/v1/slips
+ * Mengambil daftar E-Slip toko dengan filter status, search, dan pagination
+ */
+router.get('/', authMiddleware, slipController.getSlips);
 
+/**
+ * Route: GET /api/eslip/v1/slips/:id
+ * Mengambil detail satu E-Slip berdasarkan ID atau nomor slip / barcode
+ */
+router.get('/:id', authMiddleware, slipController.getSlipDetail);
+
+module.exports = router;

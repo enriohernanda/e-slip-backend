@@ -199,22 +199,195 @@ class SlipRepository {
   }
 
   /**
-   * Mengambil E-Slip beserta detail itemnya berdasarkan ID
-   * @param {number|string} id 
+   * Mengupdate status slip yang Open dan sudah melewati batas waktu 2 jam menjadi 'Expired'.
    */
-  async findById(id) {
-    const slipQuery = `
-      SELECT 
-        id, slip_number, barcode, customer_name, customer_phone, shipping_address,
-        is_spo, spo_number, status, store_code, outlet_id, created_by_user_id,
-        expired_at, locked_at, paid_at, cancelled_at, created_at, created_by, updated_date, updated_by
-      FROM e_slips
-      WHERE id = $1
-      LIMIT 1;
+  async expireTimeoutSlips() {
+    const query = `
+      UPDATE e_slips
+      SET status = 'Expired', updated_date = CURRENT_TIMESTAMP, updated_by = 'SYSTEM_TIMEOUT'
+      WHERE status = 'Open' AND expired_at < CURRENT_TIMESTAMP;
     `;
-    const { rows: slipRows } = await this.db.query(slipQuery, [id]);
+    await this.db.query(query);
+  }
+
+  /**
+   * Mengambil daftar E-Slip dengan filter dan pagination.
+   * Mendukung filter store_code, status, is_spo, created_by, dan search kata kunci.
+   */
+  async findSlips(filters = {}) {
+    await this.expireTimeoutSlips();
+
+    const {
+      store_code,
+      status,
+      search,
+      is_spo,
+      created_by,
+      limit = 10,
+      offset = 0,
+    } = filters;
+
+    const conditions = [];
+    const values = [];
+    let paramIndex = 1;
+
+    // Filter wajib toko/outlet (security scoping per store)
+    if (store_code) {
+      conditions.push(`s.store_code = $${paramIndex++}`);
+      values.push(store_code);
+    }
+
+    if (status) {
+      conditions.push(`s.status = $${paramIndex++}`);
+      values.push(status);
+    }
+
+    if (is_spo !== undefined && is_spo !== null && is_spo !== '') {
+      conditions.push(`s.is_spo = $${paramIndex++}`);
+      values.push(is_spo === 'true' || is_spo === true);
+    }
+
+    if (created_by) {
+      conditions.push(`s.created_by = $${paramIndex++}`);
+      values.push(created_by);
+    }
+
+    if (search) {
+      conditions.push(`(
+        s.slip_number ILIKE $${paramIndex} OR 
+        s.barcode ILIKE $${paramIndex} OR 
+        s.customer_name ILIKE $${paramIndex} OR 
+        s.customer_phone ILIKE $${paramIndex}
+      )`);
+      values.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const query = `
+      SELECT 
+        s.id,
+        s.slip_number,
+        s.barcode,
+        s.customer_name,
+        s.customer_phone,
+        s.shipping_address,
+        s.is_spo,
+        s.spo_number,
+        s.status,
+        s.store_code,
+        s.outlet_id,
+        s.created_by_user_id,
+        s.created_by,
+        s.expired_at,
+        s.locked_at,
+        s.paid_at,
+        s.cancelled_at,
+        s.created_at,
+        s.updated_date,
+        COALESCE(SUM(i.quantity), 0)::INTEGER AS total_quantity,
+        COALESCE(COUNT(i.id), 0)::INTEGER AS total_items,
+        COALESCE(SUM(i.subtotal), 0)::NUMERIC AS total_estimated
+      FROM e_slips s
+      LEFT JOIN e_slip_items i ON i.e_slip_id = s.id
+      ${whereClause}
+      GROUP BY s.id
+      ORDER BY s.created_at DESC
+      LIMIT $${paramIndex++} OFFSET $${paramIndex++};
+    `;
+
+    values.push(limit, offset);
+
+    const { rows } = await this.db.query(query, values);
+    return rows;
+  }
+
+  /**
+   * Menghitung total data slip sesuai filter (untuk pagination).
+   */
+  async countSlips(filters = {}) {
+    const { store_code, status, search, is_spo, created_by } = filters;
+    const conditions = [];
+    const values = [];
+    let paramIndex = 1;
+
+    if (store_code) {
+      conditions.push(`s.store_code = $${paramIndex++}`);
+      values.push(store_code);
+    }
+
+    if (status) {
+      conditions.push(`s.status = $${paramIndex++}`);
+      values.push(status);
+    }
+
+    if (is_spo !== undefined && is_spo !== null && is_spo !== '') {
+      conditions.push(`s.is_spo = $${paramIndex++}`);
+      values.push(is_spo === 'true' || is_spo === true);
+    }
+
+    if (created_by) {
+      conditions.push(`s.created_by = $${paramIndex++}`);
+      values.push(created_by);
+    }
+
+    if (search) {
+      conditions.push(`(
+        s.slip_number ILIKE $${paramIndex} OR 
+        s.barcode ILIKE $${paramIndex} OR 
+        s.customer_name ILIKE $${paramIndex} OR 
+        s.customer_phone ILIKE $${paramIndex}
+      )`);
+      values.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const countQuery = `SELECT COUNT(*)::INTEGER as total FROM e_slips s ${whereClause};`;
+    const { rows } = await this.db.query(countQuery, values);
+    return rows[0] ? rows[0].total : 0;
+  }
+
+  /**
+   * Mengambil E-Slip detail beserta item dan status logs berdasarkan ID, slip_number, atau barcode.
+   * @param {number|string} identifier 
+   */
+  async findByIdOrSlipNumber(identifier) {
+    await this.expireTimeoutSlips();
+
+    const isNumeric = /^\d+$/.test(String(identifier));
+    let slipQuery = '';
+    const values = [identifier];
+
+    if (isNumeric && String(identifier).length < 10) {
+      slipQuery = `
+        SELECT 
+          id, slip_number, barcode, customer_name, customer_phone, shipping_address,
+          is_spo, spo_number, status, store_code, outlet_id, created_by_user_id,
+          expired_at, locked_at, paid_at, cancelled_at, created_at, created_by, updated_date, updated_by
+        FROM e_slips
+        WHERE id = $1
+        LIMIT 1;
+      `;
+    } else {
+      slipQuery = `
+        SELECT 
+          id, slip_number, barcode, customer_name, customer_phone, shipping_address,
+          is_spo, spo_number, status, store_code, outlet_id, created_by_user_id,
+          expired_at, locked_at, paid_at, cancelled_at, created_at, created_by, updated_date, updated_by
+        FROM e_slips
+        WHERE slip_number = $1 OR barcode = $1
+        LIMIT 1;
+      `;
+    }
+
+    const { rows: slipRows } = await this.db.query(slipQuery, values);
     if (slipRows.length === 0) return null;
 
+    const slip = slipRows[0];
+
+    // Ambil detail item produk
     const itemsQuery = `
       SELECT 
         id, e_slip_id, sku, item_name, quantity, original_price, discount_price, effective_price, subtotal, created_at
@@ -222,16 +395,35 @@ class SlipRepository {
       WHERE e_slip_id = $1
       ORDER BY id ASC;
     `;
-    const { rows: itemRows } = await this.db.query(itemsQuery, [id]);
+    const { rows: itemRows } = await this.db.query(itemsQuery, [slip.id]);
+
+    // Ambil riwayat status log
+    const logsQuery = `
+      SELECT 
+        id, previous_status, new_status, changed_by, change_source, notes, created_at
+      FROM e_slip_status_logs
+      WHERE e_slip_id = $1
+      ORDER BY created_at ASC;
+    `;
+    const { rows: logRows } = await this.db.query(logsQuery, [slip.id]);
 
     return {
-      ...slipRows[0],
+      ...slip,
       items: itemRows,
+      status_logs: logRows,
     };
+  }
+
+  /**
+   * Mengambil E-Slip berdasarkan ID (backward compatible)
+   * @param {number|string} id 
+   */
+  async findById(id) {
+    return this.findByIdOrSlipNumber(id);
   }
 }
 
 module.exports = new SlipRepository();
-// Export class juga untuk mempermudah unit testing dengan dependency injection
 module.exports.SlipRepository = SlipRepository;
+
 
