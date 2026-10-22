@@ -1,4 +1,5 @@
 import * as authService from '../services/authService.js';
+import { handleControllerError, sendError, sendSuccess } from '../utils/httpResponse.js';
 
 /**
  * Endpoint POST /api/eslip/v1/auth/login
@@ -9,34 +10,15 @@ export async function login(req, res, next) {
     const { username, password } = req.body || {};
 
     if (!username || !password) {
-      return res.status(422).json({
-        success: false,
-        code: 'VALIDATION_ERROR',
-        message: 'Username dan password wajib diisi!',
-        data: null,
-      });
+      return sendError(res, 422, 'VALIDATION_ERROR', 'Username dan password wajib diisi!');
     }
 
     const result = await authService.login(username, password);
 
-    return res.status(200).json({
-      success: true,
-      code: 'OK',
-      message: 'Login berhasil',
-      data: result,
-    });
+    return sendSuccess(res, 200, 'OK', 'Login berhasil', result);
   } catch (error) {
-    // Jika error diketahui (misal 401 UNAUTHORIZED atau 403 FORBIDDEN dari HCM)
-    if (error.statusCode && error.statusCode < 500) {
-      return res.status(error.statusCode).json({
-        success: false,
-        code: error.code || 'UNAUTHORIZED',
-        message: error.message || 'Login gagal',
-        data: null,
-      });
-    }
-
-    // Jika error sistem/server yang tidak terduga, serahkan ke errorHandler middleware
-    next(error);
+    // Error yang diketahui (misal 401 UNAUTHORIZED atau 403 FORBIDDEN) dijawab langsung,
+    // error sistem/server yang tidak terduga diserahkan ke errorHandler middleware
+    return handleControllerError(error, res, next, { code: 'UNAUTHORIZED', message: 'Login gagal' });
   }
 }

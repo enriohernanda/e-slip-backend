@@ -1,4 +1,5 @@
 import * as userRepository from '../repositories/userRepository.js';
+import { sendError } from '../utils/httpResponse.js';
 
 /**
  * Middleware untuk memvalidasi token otentikasi pada request yang membutuhkan login.
@@ -9,23 +10,13 @@ export async function authMiddleware(req, res, next) {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        code: 'UNAUTHORIZED',
-        message: 'Akses ditolak: Token autentikasi tidak ditemukan',
-        data: null,
-      });
+      return sendError(res, 401, 'UNAUTHORIZED', 'Akses ditolak: Token autentikasi tidak ditemukan');
     }
 
     const token = authHeader.split(' ')[1];
 
     if (!token) {
-      return res.status(401).json({
-        success: false,
-        code: 'UNAUTHORIZED',
-        message: 'Akses ditolak: Token autentikasi tidak ditemukan',
-        data: null,
-      });
+      return sendError(res, 401, 'UNAUTHORIZED', 'Akses ditolak: Token autentikasi tidak ditemukan');
     }
 
     // Format token yang didukung:
@@ -49,32 +40,17 @@ export async function authMiddleware(req, res, next) {
 
     // Jika token tidak cocok dengan format yang dikenali
     if (!nik) {
-      return res.status(401).json({
-        success: false,
-        code: 'INVALID_TOKEN',
-        message: 'Token tidak valid atau format tidak dikenali',
-        data: null,
-      });
+      return sendError(res, 401, 'INVALID_TOKEN', 'Token tidak valid atau format tidak dikenali');
     }
 
     // Cari user secara otoritatif di database
     const user = await userRepository.findByNik(nik);
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        code: 'INVALID_TOKEN',
-        message: 'Pengguna token tidak ditemukan di sistem',
-        data: null,
-      });
+      return sendError(res, 401, 'INVALID_TOKEN', 'Pengguna token tidak ditemukan di sistem');
     }
 
     if (!user.is_active) {
-      return res.status(403).json({
-        success: false,
-        code: 'FORBIDDEN',
-        message: 'Akun sales tidak aktif. Hubungi administrator.',
-        data: null,
-      });
+      return sendError(res, 403, 'FORBIDDEN', 'Akun sales tidak aktif. Hubungi administrator.');
     }
 
     // Ekstrak 5 digit kode outlet untuk format nomor slip
@@ -95,11 +71,6 @@ export async function authMiddleware(req, res, next) {
 
     return next();
   } catch (error) {
-    return res.status(401).json({
-      success: false,
-      code: 'UNAUTHORIZED',
-      message: error.message || 'Gagal memverifikasi token autentikasi',
-      data: null,
-    });
+    return sendError(res, 401, 'UNAUTHORIZED', error.message || 'Gagal memverifikasi token autentikasi');
   }
 }

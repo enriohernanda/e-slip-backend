@@ -1,5 +1,7 @@
 import * as slipRepository from '../repositories/slipRepository.js';
 import { validateCreateSlip } from '../validations/slipValidation.js';
+import { createHttpError } from '../utils/httpError.js';
+import { roundCurrency } from '../utils/money.js';
 
 /**
  * Menangani pembuatan E-Slip:
@@ -13,10 +15,7 @@ import { validateCreateSlip } from '../validations/slipValidation.js';
  */
 export async function createSlip(rawPayload, user) {
   if (!user || !user.id || !user.nik) {
-    const error = new Error('Konteks user terautentikasi tidak lengkap');
-    error.statusCode = 401;
-    error.code = 'UNAUTHORIZED';
-    throw error;
+    throw createHttpError(401, 'UNAUTHORIZED', 'Konteks user terautentikasi tidak lengkap');
   }
 
   // 1. Validasi dan sanitasi data
@@ -48,7 +47,7 @@ export async function createSlip(rawPayload, user) {
     outlet_id: created.outlet_id,
     created_by_user_id: created.created_by_user_id,
     expired_at: created.expired_at,
-    total_estimated: Math.round(totalEstimated * 100) / 100,
+    total_estimated: roundCurrency(totalEstimated),
     total_items: validatedData.items.length,
     total_quantity: totalQuantity,
     items: created.items.map((item) => ({
@@ -74,10 +73,7 @@ export async function createSlip(rawPayload, user) {
  */
 export async function getSlips(queryParams = {}, user) {
   if (!user || !user.store_code) {
-    const error = new Error('Konteks user atau store_code tidak ditemukan');
-    error.statusCode = 401;
-    error.code = 'UNAUTHORIZED';
-    throw error;
+    throw createHttpError(401, 'UNAUTHORIZED', 'Konteks user atau store_code tidak ditemukan');
   }
 
   const page = Math.max(1, parseInt(queryParams.page, 10) || 1);
@@ -124,8 +120,8 @@ export async function getSlips(queryParams = {}, user) {
       cancelled_at: slip.cancelled_at,
       total_items: parseInt(slip.total_items, 10) || 0,
       total_quantity: parseInt(slip.total_quantity, 10) || 0,
-      total_estimated: Math.round(totalEstimated * 100) / 100,
-      total: Math.round(totalEstimated * 100) / 100, // Alias kompatibilitas frontend
+      total_estimated: roundCurrency(totalEstimated),
+      total: roundCurrency(totalEstimated), // Alias kompatibilitas frontend
       created_at: slip.created_at,
       updated_date: slip.updated_date,
     };
@@ -151,27 +147,18 @@ export async function getSlips(queryParams = {}, user) {
  */
 export async function getSlipDetail(identifier, user) {
   if (!identifier) {
-    const error = new Error('Parameter identifier ID/slip_number wajib disertakan');
-    error.statusCode = 400;
-    error.code = 'BAD_REQUEST';
-    throw error;
+    throw createHttpError(400, 'BAD_REQUEST', 'Parameter identifier ID/slip_number wajib disertakan');
   }
 
   const slip = await slipRepository.findByIdOrSlipNumber(identifier);
 
   if (!slip) {
-    const error = new Error(`E-Slip dengan identifier '${identifier}' tidak ditemukan`);
-    error.statusCode = 404;
-    error.code = 'NOT_FOUND';
-    throw error;
+    throw createHttpError(404, 'NOT_FOUND', `E-Slip dengan identifier '${identifier}' tidak ditemukan`);
   }
 
   // Keamanan scoping toko: Sales hanya boleh melihat slip dari tokonya sendiri
   if (user && user.store_code && slip.store_code !== user.store_code) {
-    const error = new Error('Akses ditolak: E-Slip ini milik outlet/toko lain');
-    error.statusCode = 403;
-    error.code = 'FORBIDDEN';
-    throw error;
+    throw createHttpError(403, 'FORBIDDEN', 'Akses ditolak: E-Slip ini milik outlet/toko lain');
   }
 
   const totalEstimated = slip.items.reduce((sum, item) => sum + parseFloat(item.subtotal || 0), 0);
@@ -196,8 +183,8 @@ export async function getSlipDetail(identifier, user) {
     locked_at: slip.locked_at,
     paid_at: slip.paid_at,
     cancelled_at: slip.cancelled_at,
-    total_estimated: Math.round(totalEstimated * 100) / 100,
-    total: Math.round(totalEstimated * 100) / 100,
+    total_estimated: roundCurrency(totalEstimated),
+    total: roundCurrency(totalEstimated),
     total_items: slip.items.length,
     total_quantity: totalQuantity,
     items: slip.items.map((item) => ({

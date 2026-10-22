@@ -1,4 +1,5 @@
 import * as slipService from '../services/slipService.js';
+import { handleControllerError, sendSuccess } from '../utils/httpResponse.js';
 
 /**
  * Endpoint POST /api/eslip/v1/slips
@@ -8,23 +9,9 @@ export async function createSlip(req, res, next) {
   try {
     const result = await slipService.createSlip(req.body, req.user);
 
-    return res.status(201).json({
-      success: true,
-      code: 'CREATED',
-      message: 'E-Slip berhasil dibuat',
-      data: result,
-    });
+    return sendSuccess(res, 201, 'CREATED', 'E-Slip berhasil dibuat', result);
   } catch (error) {
-    if (error.statusCode && error.statusCode < 500) {
-      return res.status(error.statusCode).json({
-        success: false,
-        code: error.code || 'BAD_REQUEST',
-        message: error.message || 'Gagal membuat E-Slip',
-        data: null,
-      });
-    }
-
-    next(error);
+    return handleControllerError(error, res, next, { code: 'BAD_REQUEST', message: 'Gagal membuat E-Slip' });
   }
 }
 
@@ -36,23 +23,9 @@ export async function getSlips(req, res, next) {
   try {
     const result = await slipService.getSlips(req.query, req.user);
 
-    return res.status(200).json({
-      success: true,
-      code: 'OK',
-      message: 'Daftar E-Slip berhasil diambil',
-      data: result,
-    });
+    return sendSuccess(res, 200, 'OK', 'Daftar E-Slip berhasil diambil', result);
   } catch (error) {
-    if (error.statusCode && error.statusCode < 500) {
-      return res.status(error.statusCode).json({
-        success: false,
-        code: error.code || 'BAD_REQUEST',
-        message: error.message || 'Gagal mengambil daftar E-Slip',
-        data: null,
-      });
-    }
-
-    next(error);
+    return handleControllerError(error, res, next, { code: 'BAD_REQUEST', message: 'Gagal mengambil daftar E-Slip' });
   }
 }
 
@@ -65,22 +38,8 @@ export async function getSlipDetail(req, res, next) {
     const { id } = req.params;
     const result = await slipService.getSlipDetail(id, req.user);
 
-    return res.status(200).json({
-      success: true,
-      code: 'OK',
-      message: 'Detail E-Slip berhasil diambil',
-      data: result,
-    });
+    return sendSuccess(res, 200, 'OK', 'Detail E-Slip berhasil diambil', result);
   } catch (error) {
-    if (error.statusCode && error.statusCode < 500) {
-      return res.status(error.statusCode).json({
-        success: false,
-        code: error.code || 'BAD_REQUEST',
-        message: error.message || 'Gagal mengambil detail E-Slip',
-        data: null,
-      });
-    }
-
-    next(error);
+    return handleControllerError(error, res, next, { code: 'BAD_REQUEST', message: 'Gagal mengambil detail E-Slip' });
   }
 }

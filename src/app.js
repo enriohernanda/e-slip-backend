@@ -3,6 +3,7 @@ import cors from 'cors';
 import * as authController from './controllers/authController.js';
 import { slipRoutes } from './routes/slipRoutes.js';
 import { errorHandler } from './middlewares/errorHandler.js';
+import { sendError } from './utils/httpResponse.js';
 
 export const app = express();
 
@@ -26,12 +27,7 @@ app.use('/api/eslip/v1/slips', slipRoutes);
 
 // Handler untuk route yang tidak ditemukan (404)
 app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    code: 'NOT_FOUND',
-    message: `Endpoint ${req.method} ${req.originalUrl} tidak ditemukan`,
-    data: null,
-  });
+  sendError(res, 404, 'NOT_FOUND', `Endpoint ${req.method} ${req.originalUrl} tidak ditemukan`);
 });
 
 // Error handling middleware terpusat

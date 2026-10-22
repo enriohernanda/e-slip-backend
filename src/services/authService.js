@@ -1,4 +1,5 @@
 import * as userRepository from '../repositories/userRepository.js';
+import { createHttpError } from '../utils/httpError.js';
 
 let bcrypt;
 try {
@@ -23,19 +24,13 @@ export async function login(username, password) {
 
   if (!user) {
     console.warn(`[AUTH] Login gagal: User "${username}" tidak ditemukan di tabel users.`);
-    const error = new Error('Kredensial tidak valid (Username atau password salah)');
-    error.statusCode = 401;
-    error.code = 'UNAUTHORIZED';
-    throw error;
+    throw createHttpError(401, 'UNAUTHORIZED', 'Kredensial tidak valid (Username atau password salah)');
   }
 
   // 2. Cek apakah akun aktif
   if (!user.is_active) {
     console.warn(`[AUTH] Login gagal: Akun "${username}" berstatus non-aktif (is_active = false).`);
-    const error = new Error('Akun karyawan tidak aktif di sistem. Hubungi Administrator / HR.');
-    error.statusCode = 403;
-    error.code = 'FORBIDDEN';
-    throw error;
+    throw createHttpError(403, 'FORBIDDEN', 'Akun karyawan tidak aktif di sistem. Hubungi Administrator / HR.');
   }
 
   // 3. Verifikasi kecocokan password (bcrypt hash dengan fallback plain text)
@@ -45,10 +40,7 @@ export async function login(username, password) {
 
   if (!isPasswordValid) {
     console.warn(`[AUTH] Login gagal: Password untuk user "${username}" tidak cocok.`);
-    const error = new Error('Kredensial tidak valid (Username atau password salah)');
-    error.statusCode = 401;
-    error.code = 'UNAUTHORIZED';
-    throw error;
+    throw createHttpError(401, 'UNAUTHORIZED', 'Kredensial tidak valid (Username atau password salah)');
   }
 
   // 4. Update waktu login terakhir di database
