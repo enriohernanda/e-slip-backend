@@ -22,3 +22,17 @@ export async function login(req, res, next) {
     return handleControllerError(error, res, next, { code: 'UNAUTHORIZED', message: 'Login gagal' });
   }
 }
+
+/**
+ * Endpoint GET /api/eslip/v1/auth/me
+ * Mengembalikan profil user dari token (terproteksi authMiddleware).
+ */
+export async function getProfile(req, res, next) {
+  try {
+    const result = await authService.getProfile(req.user.nik);
+
+    return sendSuccess(res, 200, 'OK', 'Profil pengguna berhasil diambil', result);
+  } catch (error) {
+    return handleControllerError(error, res, next, { code: 'BAD_REQUEST', message: 'Gagal mengambil profil pengguna' });
+  }
+}

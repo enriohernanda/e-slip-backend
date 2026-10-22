@@ -11,6 +11,21 @@ try {
   };
 }
 
+// Data user yang aman dikirim ke frontend (tanpa hash password); dipakai login dan profil
+function toAuthUser(user) {
+  return {
+    id: user.id,
+    nik: user.nik,
+    name: user.name,
+    username: user.username,
+    store_code: user.store_code,
+    outlet_id: user.store_code, // Alias kompatibel jika frontend masih membaca field outlet_id
+    role: 'sales',
+    is_active: user.is_active,
+    last_synced_at: user.last_synced_at,
+  };
+}
+
 /**
  * Menangani alur login menggunakan database PostgreSQL:
  * 1. Cari user di database berdasarkan username
@@ -49,17 +64,22 @@ export async function login(username, password) {
 
   // 5. Kembalikan data user yang bersih (tanpa hash password)
   return {
-    user: {
-      id: updatedUser.id,
-      nik: updatedUser.nik,
-      name: updatedUser.name,
-      username: updatedUser.username,
-      store_code: updatedUser.store_code,
-      outlet_id: updatedUser.store_code, // Alias kompatibel jika frontend masih membaca field outlet_id
-      role: 'sales',
-      is_active: updatedUser.is_active,
-      last_synced_at: updatedUser.last_synced_at,
-    },
+    user: toAuthUser(updatedUser),
     token: createSessionToken(updatedUser.nik),
   };
+}
+
+/**
+ * Mengambil profil user yang sedang login (dipakai frontend untuk memulihkan sesi).
+ *
+ * @param {string} nik - NIK dari token yang sudah diverifikasi authMiddleware
+ */
+export async function getProfile(nik) {
+  const user = await userRepository.findByNik(nik);
+
+  if (!user) {
+    throw createHttpError(404, 'NOT_FOUND', 'Pengguna tidak ditemukan');
+  }
+
+  return { user: toAuthUser(user) };
 }

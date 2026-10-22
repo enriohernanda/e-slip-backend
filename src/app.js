@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { authRoutes } from './routes/authRoutes.js';
 import { slipRoutes } from './routes/slipRoutes.js';
+import { itemRoutes } from './routes/itemRoutes.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { sendError } from './utils/httpResponse.js';
 
@@ -24,6 +25,9 @@ app.use('/api/eslip/v1/auth', authRoutes);
 
 // Endpoint Transaksi E-Slip
 app.use('/api/eslip/v1/slips', slipRoutes);
+
+// Endpoint Katalog Item
+app.use('/api/eslip/v1/items', itemRoutes);
 
 // Handler untuk route yang tidak ditemukan (404)
 app.use((req, res) => {
