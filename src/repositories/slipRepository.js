@@ -206,22 +206,12 @@ export async function expireTimeoutSlips() {
 }
 
 /**
- * Mengambil daftar E-Slip dengan filter dan pagination.
- * Mendukung filter store_code, status, is_spo, created_by, dan search kata kunci.
+ * Menyusun klausa WHERE dan parameter untuk filter daftar E-Slip.
+ * Dipakai bersama oleh findSlips dan countSlips agar data dan total pagination selalu konsisten.
+ *
+ * @returns {{ whereClause: string, values: Array, nextParamIndex: number }}
  */
-export async function findSlips(filters = {}) {
-  await expireTimeoutSlips();
-
-  const {
-    store_code,
-    status,
-    search,
-    is_spo,
-    created_by,
-    limit = 10,
-    offset = 0,
-  } = filters;
-
+function buildSlipFilters({ store_code, status, search, is_spo, created_by }) {
   const conditions = [];
   const values = [];
   let paramIndex = 1;
@@ -260,6 +250,19 @@ export async function findSlips(filters = {}) {
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
+  return { whereClause, values, nextParamIndex: paramIndex };
+}
+
+/**
+ * Mengambil daftar E-Slip dengan filter dan pagination.
+ * Mendukung filter store_code, status, is_spo, created_by, dan search kata kunci.
+ */
+export async function findSlips(filters = {}) {
+  await expireTimeoutSlips();
+
+  const { limit = 10, offset = 0 } = filters;
+  const { whereClause, values, nextParamIndex } = buildSlipFilters(filters);
+
   const query = `
     SELECT 
       s.id,
@@ -289,7 +292,7 @@ export async function findSlips(filters = {}) {
     ${whereClause}
     GROUP BY s.id
     ORDER BY s.created_at DESC
-    LIMIT $${paramIndex++} OFFSET $${paramIndex++};
+    LIMIT $${nextParamIndex} OFFSET $${nextParamIndex + 1};
   `;
 
   values.push(limit, offset);
@@ -302,43 +305,7 @@ export async function findSlips(filters = {}) {
  * Menghitung total data slip sesuai filter (untuk pagination).
  */
 export async function countSlips(filters = {}) {
-  const { store_code, status, search, is_spo, created_by } = filters;
-  const conditions = [];
-  const values = [];
-  let paramIndex = 1;
-
-  if (store_code) {
-    conditions.push(`s.store_code = $${paramIndex++}`);
-    values.push(store_code);
-  }
-
-  if (status) {
-    conditions.push(`s.status = $${paramIndex++}`);
-    values.push(status);
-  }
-
-  if (is_spo !== undefined && is_spo !== null && is_spo !== '') {
-    conditions.push(`s.is_spo = $${paramIndex++}`);
-    values.push(is_spo === 'true' || is_spo === true);
-  }
-
-  if (created_by) {
-    conditions.push(`s.created_by = $${paramIndex++}`);
-    values.push(created_by);
-  }
-
-  if (search) {
-    conditions.push(`(
-      s.slip_number ILIKE $${paramIndex} OR 
-      s.barcode ILIKE $${paramIndex} OR 
-      s.customer_name ILIKE $${paramIndex} OR 
-      s.customer_phone ILIKE $${paramIndex}
-    )`);
-    values.push(`%${search}%`);
-    paramIndex++;
-  }
-
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const { whereClause, values } = buildSlipFilters(filters);
   const countQuery = `SELECT COUNT(*)::INTEGER as total FROM e_slips s ${whereClause};`;
   const { rows } = await db.query(countQuery, values);
   return rows[0] ? rows[0].total : 0;
