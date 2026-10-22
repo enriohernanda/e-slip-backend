@@ -1,10 +1,11 @@
 import * as db from '../config/db.js';
 
 /**
- * Mencari data user berdasarkan username atau NIK (untuk login)
- * @param {string} usernameOrNik
+ * Mencari data user berdasarkan username (untuk login).
+ * NIK tidak dipakai untuk login; NIK hanya untuk integrasi dengan HCM.
+ * @param {string} username
  */
-export async function findByUsername(usernameOrNik) {
+export async function findByUsername(username) {
   const query = `
     SELECT 
       id, 
@@ -18,10 +19,10 @@ export async function findByUsername(usernameOrNik) {
       created_at,
       updated_date
     FROM users 
-    WHERE username = $1 OR nik = $1 
+    WHERE username = $1
     LIMIT 1;
   `;
-  const { rows } = await db.query(query, [usernameOrNik]);
+  const { rows } = await db.query(query, [username]);
   return rows[0] || null;
 }
 

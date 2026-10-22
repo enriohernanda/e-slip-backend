@@ -133,11 +133,13 @@ describe('POST /api/eslip/v1/auth/login — outcomes', () => {
     assert.equal(JSON.parse(res.text).data.user.name, 'Ahmad Fauzi (returned)');
   });
 
-  it('the username field also matches a NIK (same query)', async () => {
-    h.db([Q.findUserForLogin, [loginRow]], [Q.updateLastLogin, [updatedRow]]);
-    const res = await h.request('POST', LOGIN, { body: { username: 'SALES-10011-001', password: PASSWORD } });
-    assert.equal(res.status, 200);
-    assert.deepEqual(h.statements[0], stmt('pool', SQL.findUserForLogin, ['SALES-10011-001']));
+  it('a NIK is not accepted as the username (lookup is by username only)', async () => {
+    // Simulates `WHERE username = $1`: only the user's username finds the row.
+    h.db([Q.findUserForLogin, (params) => (params[0] === loginRow.username ? [loginRow] : [])]);
+    const res = await h.request('POST', LOGIN, { body: { username: loginRow.nik, password: PASSWORD } });
+    assertJson(res, 401, invalidCredentials);
+    assert.deepEqual(h.statements, [stmt('pool', SQL.findUserForLogin, [loginRow.nik])]);
+    assert.deepEqual(h.logs, [['warn', `[AUTH] Login gagal: User "${loginRow.nik}" tidak ditemukan di tabel users.`]]);
   });
 
   it('database error on lookup → 500 exposing the driver code and message', async () => {

@@ -13,7 +13,7 @@ try {
 
 /**
  * Menangani alur login menggunakan database PostgreSQL:
- * 1. Cari user di database berdasarkan username atau NIK
+ * 1. Cari user di database berdasarkan username
  * 2. Periksa status keaktifan user
  * 3. Verifikasi password menggunakan bcrypt
  * 4. Perbarui timestamp login terakhir
