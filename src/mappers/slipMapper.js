@@ -2,7 +2,7 @@ import { roundCurrency } from '../utils/money.js';
 
 /**
  * Pemetaan data E-Slip dari database menjadi struktur respons API.
- * Urutan key dan field alias merupakan bagian dari kontrak respons, jangan diubah.
+ * Urutan key merupakan bagian dari kontrak respons, jangan diubah.
  */
 
 function toSlipItemResponse(item) {
@@ -38,7 +38,6 @@ function toSlipHeaderResponse(slip) {
     barcode: slip.barcode,
     customer_name: slip.customer_name,
     customer_phone: slip.customer_phone,
-    customer: slip.customer_name, // Alias kompatibilitas frontend (SlipListPage.jsx)
     shipping_address: slip.shipping_address,
     is_spo: slip.is_spo,
     spo_number: slip.spo_number,
@@ -91,7 +90,6 @@ export function toSlipListItemResponse(slip) {
     total_items: parseInt(slip.total_items, 10) || 0,
     total_quantity: parseInt(slip.total_quantity, 10) || 0,
     total_estimated: roundCurrency(totalEstimated),
-    total: roundCurrency(totalEstimated), // Alias kompatibilitas frontend
     created_at: slip.created_at,
     updated_date: slip.updated_date,
   };
@@ -104,7 +102,6 @@ export function toSlipDetailResponse(slip, { totalEstimated, totalQuantity }) {
   return {
     ...toSlipHeaderResponse(slip),
     total_estimated: roundCurrency(totalEstimated),
-    total: roundCurrency(totalEstimated),
     total_items: slip.items.length,
     total_quantity: totalQuantity,
     items: slip.items.map((item) => ({

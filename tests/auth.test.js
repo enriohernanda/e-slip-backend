@@ -111,7 +111,6 @@ describe('POST /api/eslip/v1/auth/login — outcomes', () => {
           name: 'Ahmad Fauzi (returned)',
           username: 'sales01',
           store_code: 'STORE-10011',
-          outlet_id: 'STORE-10011',
           role: 'sales',
           is_active: true,
           last_synced_at: '2026-10-22T03:00:00.000Z',

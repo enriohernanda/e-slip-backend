@@ -19,7 +19,6 @@ function toAuthUser(user) {
     name: user.name,
     username: user.username,
     store_code: user.store_code,
-    outlet_id: user.store_code, // Alias kompatibel jika frontend masih membaca field outlet_id
     role: 'sales',
     is_active: user.is_active,
     last_synced_at: user.last_synced_at,

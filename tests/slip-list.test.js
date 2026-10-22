@@ -130,7 +130,7 @@ describe('GET /api/eslip/v1/slips — query building', () => {
 });
 
 describe('GET /api/eslip/v1/slips — response mapping', () => {
-  it('maps rows with aliases, numeric parsing and rounding', async () => {
+  it('maps rows with numeric parsing and rounding', async () => {
     const row = {
       id: '5',
       slip_number: '10011261020000003',
@@ -169,7 +169,6 @@ describe('GET /api/eslip/v1/slips — response mapping', () => {
             barcode: '10011261020000003',
             customer_name: 'Dedy',
             customer_phone: '081122334455',
-            customer: 'Dedy',
             shipping_address: 'Jl. Bintaro',
             is_spo: false,
             spo_number: null,
@@ -185,11 +184,10 @@ describe('GET /api/eslip/v1/slips — response mapping', () => {
             total_items: 3,
             total_quantity: 9,
             total_estimated: 100.01,
-            total: 100.01,
             created_at: '2026-10-22T03:00:00.000Z',
             updated_date: '2026-10-22T03:30:00.000Z',
           },
-          { id: '6', total_items: 0, total_quantity: 0, total_estimated: 0, total: 0 },
+          { id: '6', total_items: 0, total_quantity: 0, total_estimated: 0 },
         ],
         pagination: { total_records: 2, page: 1, limit: 10, total_pages: 1 },
       },

@@ -113,7 +113,6 @@ describe('GET /api/eslip/v1/slips/:id — response mapping', () => {
         barcode: '10011261022000009',
         customer_name: 'Ibu Ratna',
         customer_phone: '081398765432',
-        customer: 'Ibu Ratna',
         shipping_address: 'Apartemen Green Pramuka',
         is_spo: true,
         spo_number: 'SPO-1',
@@ -127,7 +126,6 @@ describe('GET /api/eslip/v1/slips/:id — response mapping', () => {
         paid_at: null,
         cancelled_at: null,
         total_estimated: 35,
-        total: 35,
         total_items: 2,
         total_quantity: 5,
         items: [
@@ -148,7 +146,6 @@ describe('GET /api/eslip/v1/slips/:id — response mapping', () => {
     const res = await detail('9', { items: [], logs: [] });
     const data = JSON.parse(res.text).data;
     assert.equal(data.total_estimated, 0);
-    assert.equal(data.total, 0);
     assert.equal(data.total_items, 0);
     assert.equal(data.total_quantity, 0);
     assert.deepEqual(data.items, []);

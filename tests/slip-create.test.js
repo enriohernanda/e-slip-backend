@@ -71,14 +71,12 @@ describe('POST /api/eslip/v1/slips — validation (422, first failure wins)', ()
   const cases = [
     ['no body', undefined, 'Request body tidak boleh kosong'],
     ['missing customer name', { items: [VALID_ITEM] }, 'Nama customer wajib diisi'],
+    ['camelCase customerName is not accepted', { customerName: 'Camel', items: [VALID_ITEM] }, 'Nama customer wajib diisi'],
     ['whitespace customer name', { ...VALID, customer_name: '   ' }, 'Nama customer wajib diisi'],
     ['customer name over 255', { ...VALID, customer_name: 'A'.repeat(256) }, 'Nama customer maksimal 255 karakter'],
     ['phone over 20', { ...VALID, customer_phone: '0'.repeat(21) }, 'Nomor HP customer maksimal 20 karakter'],
     ['is_spo without number', { ...VALID, is_spo: true }, 'Nomor SPO wajib diisi jika transaksi menggunakan SPO'],
     ['is_spo "false" string counts as SPO', { ...VALID, is_spo: 'false' }, 'Nomor SPO wajib diisi jika transaksi menggunakan SPO'],
-    ['has_spo without number', { ...VALID, has_spo: true }, 'Nomor SPO wajib diisi jika transaksi menggunakan SPO'],
-    ['hasSpo without number', { ...VALID, hasSpo: 1 }, 'Nomor SPO wajib diisi jika transaksi menggunakan SPO'],
-    ['is_spo=false overrides has_spo', { customer_name: 'Budi', is_spo: false, has_spo: true, items: [] }, 'E-Slip wajib memiliki minimal 1 item produk'],
     ['spo number over 50 even when not SPO', { ...VALID, spo_number: 'S'.repeat(51) }, 'Nomor SPO maksimal 50 karakter'],
     ['items missing', { customer_name: 'Budi' }, 'E-Slip wajib memiliki minimal 1 item produk'],
     ['items not an array', { customer_name: 'Budi', items: { 0: VALID_ITEM } }, 'E-Slip wajib memiliki minimal 1 item produk'],
@@ -89,6 +87,7 @@ describe('POST /api/eslip/v1/slips — validation (422, first failure wins)', ()
     ['sku missing', item({ sku: '' }), 'SKU pada item ke-1 wajib diisi'],
     ['sku over 50', item({ sku: 'S'.repeat(51) }), 'SKU pada item ke-1 maksimal 50 karakter'],
     ['item name missing', item({ item_name: '  ' }), 'Nama produk pada item ke-1 wajib diisi'],
+    ['camelCase itemName is not accepted', item({ item_name: undefined, itemName: 'Beras' }), 'Nama produk pada item ke-1 wajib diisi'],
     ['item name over 255', item({ item_name: 'N'.repeat(256) }), 'Nama produk pada item ke-1 maksimal 255 karakter'],
     ['quantity zero', item({ quantity: 0 }), 'Quantity pada item ke-1 harus berupa bilangan bulat positif'],
     ['quantity negative', item({ quantity: -1 }), 'Quantity pada item ke-1 harus berupa bilangan bulat positif'],
@@ -115,7 +114,7 @@ describe('POST /api/eslip/v1/slips — validation (422, first failure wins)', ()
     assertJson(res, 500, {
       success: false,
       code: 'INTERNAL_SERVER_ERROR',
-      message: '(body.customer_name || body.customerName || body.customer || "").trim is not a function',
+      message: '(body.customer_name || "").trim is not a function',
       data: null,
     });
   });
@@ -186,41 +185,24 @@ describe('POST /api/eslip/v1/slips — successful create', () => {
     assert.deepEqual(h.logs, []);
   });
 
-  it('accepts camelCase and short aliases', async () => {
+  it('ignores camelCase and short alias keys', async () => {
     createRoutes();
     const res = await h.request('POST', CREATE, {
       token: TOKEN,
       body: {
-        customerName: 'Camel',
+        customer_name: 'Snake',
         phoneNumber: '0811',
+        phone: '0812',
         address: 'Jl. Alias',
         hasSpo: true,
+        has_spo: true,
         spoNumber: 'SPO-1',
-        items: [{ sku: 'A', itemName: 'Camel Item', quantity: 1, originalPrice: 500, discountPrice: 400 }],
+        items: [{ sku: 'A', item_name: 'Snake Item', quantity: 1, original_price: 500, originalPrice: 900, discountPrice: 400 }],
       },
     });
     assert.equal(res.status, 201);
-    assert.deepEqual(paramsOf(Q.insertSlip)[0].slice(2, 7), ['Camel', '0811', 'Jl. Alias', true, 'SPO-1']);
-    assert.deepEqual(paramsOf(Q.insertItem)[0].slice(1, 8), ['A', 'Camel Item', 1, 500, 400, 400, 400]);
-  });
-
-  it('uses the remaining aliases (customer, phone, name)', async () => {
-    createRoutes();
-    await h.request('POST', CREATE, {
-      token: TOKEN,
-      body: { customer: 'Short', phone: '0812', items: [{ sku: 'B', name: 'Short Item', quantity: 1, original_price: 1 }] },
-    });
-    assert.deepEqual(paramsOf(Q.insertSlip)[0].slice(2, 7), ['Short', '0812', null, false, null]);
-    assert.equal(paramsOf(Q.insertItem)[0][2], 'Short Item');
-  });
-
-  it('snake_case wins over aliases, and is_spo wins over has_spo', async () => {
-    createRoutes();
-    await h.request('POST', CREATE, {
-      token: TOKEN,
-      body: { customer_name: 'Snake', customerName: 'Camel', is_spo: false, hasSpo: true, spo_number: 'IGNORED', items: [VALID_ITEM] },
-    });
     assert.deepEqual(paramsOf(Q.insertSlip)[0].slice(2, 7), ['Snake', null, null, false, null]);
+    assert.deepEqual(paramsOf(Q.insertItem)[0].slice(1, 8), ['A', 'Snake Item', 1, 500, null, 500, 500]);
   });
 
   it('coerces quantity with parseInt and prices with parseFloat', async () => {
