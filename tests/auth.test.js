@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import bcrypt from 'bcryptjs';
 import { assertErrorLogged, assertJson, stmt, useHarness } from './helpers/harness.js';
-import { FIXED_NOW, Q, SQL, dbError } from './helpers/fixtures.js';
+import { ACTIVE_USER, FIXED_NOW, Q, SERVER_ERROR, SQL, TOKEN, dbError } from './helpers/fixtures.js';
 
 const h = useHarness();
 
@@ -23,8 +23,7 @@ const loginRow = {
   updated_date: '2026-10-21T03:00:00.000Z',
 };
 
-// The UPDATE ... RETURNING row deliberately differs from the SELECT row:
-// the response must be built from the returned row.
+// Deliberately differs from the SELECT row: the response must be built from the UPDATE row.
 const updatedRow = {
   id: '1',
   nik: 'SALES-10011-001',
@@ -111,10 +110,9 @@ describe('POST /api/eslip/v1/auth/login — outcomes', () => {
           name: 'Ahmad Fauzi (returned)',
           username: 'sales01',
           store_code: 'STORE-10011',
-          outlet_id: 'STORE-10011',
           role: 'sales',
           is_active: true,
-          last_synced_at: '2026-10-22T03:00:00.000Z',
+          last_synced_at: '2026-10-22T10:00:00+07:00',
         },
         token: `eslip-token-SALES-10011-001-${FIXED_NOW}`,
       },
@@ -134,7 +132,6 @@ describe('POST /api/eslip/v1/auth/login — outcomes', () => {
   });
 
   it('a NIK is not accepted as the username (lookup is by username only)', async () => {
-    // Simulates `WHERE username = $1`: only the user's username finds the row.
     h.db([Q.findUserForLogin, (params) => (params[0] === loginRow.username ? [loginRow] : [])]);
     const res = await h.request('POST', LOGIN, { body: { username: loginRow.nik, password: PASSWORD } });
     assertJson(res, 401, invalidCredentials);
@@ -142,34 +139,56 @@ describe('POST /api/eslip/v1/auth/login — outcomes', () => {
     assert.deepEqual(h.logs, [['warn', `[AUTH] Login gagal: User "${loginRow.nik}" tidak ditemukan di tabel users.`]]);
   });
 
-  it('database error on lookup → 500 exposing the driver code and message', async () => {
+  it('database error with a driver code on lookup → generic 500, driver details only in the log', async () => {
     h.db([Q.findUserForLogin, () => { throw dbError('connect ECONNREFUSED 127.0.0.1:5432', 'ECONNREFUSED'); }]);
     const res = await h.request('POST', LOGIN, { body: { username: 'sales01', password: PASSWORD } });
-    assertJson(res, 500, {
-      success: false,
-      code: 'ECONNREFUSED',
-      message: 'connect ECONNREFUSED 127.0.0.1:5432',
-      data: null,
-    });
+    assertJson(res, 500, SERVER_ERROR);
     assertErrorLogged(h, 'connect ECONNREFUSED 127.0.0.1:5432');
   });
 
-  it('database error without a code on update → 500 INTERNAL_SERVER_ERROR', async () => {
+  it('database error without a code on update → generic 500', async () => {
     h.db([Q.findUserForLogin, [loginRow]], [Q.updateLastLogin, () => { throw dbError('update failed'); }]);
     const res = await h.request('POST', LOGIN, { body: { username: 'sales01', password: PASSWORD } });
-    assertJson(res, 500, { success: false, code: 'INTERNAL_SERVER_ERROR', message: 'update failed', data: null });
+    assertJson(res, 500, SERVER_ERROR);
     assertErrorLogged(h, 'update failed');
   });
 
-  it('non-string password reaches bcrypt and fails with 500', async () => {
+  it('non-string password reaches bcrypt and fails with a generic 500', async () => {
     h.db([Q.findUserForLogin, [loginRow]]);
     const res = await h.request('POST', LOGIN, { body: { username: 'sales01', password: 12345 } });
-    assertJson(res, 500, {
-      success: false,
-      code: 'INTERNAL_SERVER_ERROR',
-      message: 'Illegal arguments: number, string',
-      data: null,
+    assertJson(res, 500, SERVER_ERROR);
+    assertErrorLogged(h, 'Illegal arguments: number, string');
+  });
+});
+
+describe('GET /api/eslip/v1/auth/me', () => {
+  it('returns the profile with last_synced_at in WIB', async () => {
+    h.db([Q.findUserByNik, [ACTIVE_USER]]);
+    const res = await h.request('GET', '/api/eslip/v1/auth/me', { token: TOKEN });
+    assertJson(res, 200, {
+      success: true,
+      code: 'OK',
+      message: 'Profil pengguna berhasil diambil',
+      data: {
+        user: {
+          id: '1',
+          nik: 'SALES-10011-001',
+          name: 'Ahmad Fauzi',
+          username: 'sales01',
+          store_code: 'STORE-10011',
+          role: 'sales',
+          is_active: true,
+          last_synced_at: '2026-10-21T10:00:00+07:00',
+        },
+      },
     });
+  });
+
+  it('user removed between authentication and lookup → 404 NOT_FOUND', async () => {
+    let lookups = 0;
+    h.db([Q.findUserByNik, () => (++lookups === 1 ? [ACTIVE_USER] : [])]);
+    const res = await h.request('GET', '/api/eslip/v1/auth/me', { token: TOKEN });
+    assertJson(res, 404, { success: false, code: 'NOT_FOUND', message: 'Pengguna tidak ditemukan', data: null });
   });
 });
 
@@ -250,21 +269,10 @@ describe('authMiddleware (via GET /api/eslip/v1/slips)', () => {
     assert.equal(h.statements.length, 1);
   });
 
-  it('database error → 401 UNAUTHORIZED carrying the raw message, not logged', async () => {
+  it('database error → generic 500 and logged, not treated as an invalid token', async () => {
     h.db([Q.findUserByNik, () => { throw dbError('boom db'); }]);
     const res = await h.request('GET', LIST, { token: 'eslip-token-X-1' });
-    assertJson(res, 401, { success: false, code: 'UNAUTHORIZED', message: 'boom db', data: null });
-    assert.deepEqual(h.logs, []);
-  });
-
-  it('database error with an empty message → default message', async () => {
-    h.db([Q.findUserByNik, () => { throw dbError(''); }]);
-    const res = await h.request('GET', LIST, { token: 'eslip-token-X-1' });
-    assertJson(res, 401, {
-      success: false,
-      code: 'UNAUTHORIZED',
-      message: 'Gagal memverifikasi token autentikasi',
-      data: null,
-    });
+    assertJson(res, 500, SERVER_ERROR);
+    assertErrorLogged(h, 'boom db');
   });
 });

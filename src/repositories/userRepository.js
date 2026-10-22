@@ -1,10 +1,5 @@
 import * as db from '../config/db.js';
 
-/**
- * Mencari data user berdasarkan username (untuk login).
- * NIK tidak dipakai untuk login; NIK hanya untuk integrasi dengan HCM.
- * @param {string} username
- */
 export async function findByUsername(username) {
   const query = `
     SELECT 
@@ -26,10 +21,6 @@ export async function findByUsername(username) {
   return rows[0] || null;
 }
 
-/**
- * Mencari data user berdasarkan NIK
- * @param {string} nik
- */
 export async function findByNik(nik) {
   const query = `
     SELECT 
@@ -48,10 +39,6 @@ export async function findByNik(nik) {
   return rows[0] || null;
 }
 
-/**
- * Mencari data user berdasarkan ID
- * @param {number|string} id
- */
 export async function findById(id) {
   const query = `
     SELECT 
@@ -70,10 +57,6 @@ export async function findById(id) {
   return rows[0] || null;
 }
 
-/**
- * Memperbarui timestamp login / sync terakhir user
- * @param {number|string} id
- */
 export async function updateLastLogin(id) {
   const query = `
     UPDATE users
@@ -88,10 +71,6 @@ export async function updateLastLogin(id) {
   return rows[0];
 }
 
-/**
- * Menyimpan atau memperbarui data user berdasarkan NIK (Upsert) untuk sinkronisasi HCM
- * @param {Object} userData
- */
 export async function upsertUser(userData) {
   const query = `
     INSERT INTO users (
@@ -121,9 +100,6 @@ export async function upsertUser(userData) {
   return rows[0];
 }
 
-/**
- * Mengambil semua daftar user (tanpa hash password)
- */
 export async function getAllUsers() {
   const query = `
     SELECT id, nik, name, username, store_code, is_active, last_synced_at

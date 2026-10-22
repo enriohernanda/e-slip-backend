@@ -1,14 +1,6 @@
 import * as db from '../config/db.js';
 
-/**
- * Mengambil katalog item dari riwayat e_slip_items: satu baris per SKU, memakai snapshot
- * terbaru (id tertinggi) sehingga nama dan harga mengikuti transaksi terakhir.
- *
- * @param {Object} params
- * @param {string|null} params.search - Kata kunci SKU / nama produk (null = semua)
- * @param {number} params.limit
- * @returns {Promise<Array>}
- */
+// Belum ada tabel master produk: katalog diambil dari snapshot terbaru per SKU di e_slip_items
 export async function findCatalogItems({ search, limit }) {
   const query = `
     SELECT sku, item_name, original_price, discount_price, effective_price

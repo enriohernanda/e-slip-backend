@@ -1,9 +1,7 @@
+import { toWibIsoString } from '../utils/dateTime.js';
 import { roundCurrency } from '../utils/money.js';
 
-/**
- * Pemetaan data E-Slip dari database menjadi struktur respons API.
- * Urutan key dan field alias merupakan bagian dari kontrak respons, jangan diubah.
- */
+// Urutan key adalah bagian dari kontrak respons, jangan diubah
 
 function toSlipItemResponse(item) {
   return {
@@ -26,11 +24,10 @@ function toStatusLogResponse(log) {
     changed_by: log.changed_by,
     change_source: log.change_source,
     notes: log.notes,
-    created_at: log.created_at,
+    created_at: toWibIsoString(log.created_at),
   };
 }
 
-// Field header yang sama pada respons daftar dan detail E-Slip
 function toSlipHeaderResponse(slip) {
   return {
     id: slip.id,
@@ -38,7 +35,6 @@ function toSlipHeaderResponse(slip) {
     barcode: slip.barcode,
     customer_name: slip.customer_name,
     customer_phone: slip.customer_phone,
-    customer: slip.customer_name, // Alias kompatibilitas frontend (SlipListPage.jsx)
     shipping_address: slip.shipping_address,
     is_spo: slip.is_spo,
     spo_number: slip.spo_number,
@@ -47,16 +43,13 @@ function toSlipHeaderResponse(slip) {
     outlet_id: slip.outlet_id,
     created_by_user_id: slip.created_by_user_id,
     created_by: slip.created_by,
-    expired_at: slip.expired_at,
-    locked_at: slip.locked_at,
-    paid_at: slip.paid_at,
-    cancelled_at: slip.cancelled_at,
+    expired_at: toWibIsoString(slip.expired_at),
+    locked_at: toWibIsoString(slip.locked_at),
+    paid_at: toWibIsoString(slip.paid_at),
+    cancelled_at: toWibIsoString(slip.cancelled_at),
   };
 }
 
-/**
- * Respons POST /slips: hasil insert transaksi beserta total yang dihitung dari payload.
- */
 export function toCreatedSlipResponse(created, { totalEstimated, totalItems, totalQuantity }) {
   return {
     id: created.id,
@@ -71,18 +64,15 @@ export function toCreatedSlipResponse(created, { totalEstimated, totalItems, tot
     store_code: created.store_code,
     outlet_id: created.outlet_id,
     created_by_user_id: created.created_by_user_id,
-    expired_at: created.expired_at,
+    expired_at: toWibIsoString(created.expired_at),
     total_estimated: roundCurrency(totalEstimated),
     total_items: totalItems,
     total_quantity: totalQuantity,
     items: created.items.map(toSlipItemResponse),
-    created_at: created.created_at,
+    created_at: toWibIsoString(created.created_at),
   };
 }
 
-/**
- * Satu baris respons GET /slips; total diambil dari agregasi query daftar.
- */
 export function toSlipListItemResponse(slip) {
   const totalEstimated = parseFloat(slip.total_estimated || 0);
 
@@ -91,28 +81,23 @@ export function toSlipListItemResponse(slip) {
     total_items: parseInt(slip.total_items, 10) || 0,
     total_quantity: parseInt(slip.total_quantity, 10) || 0,
     total_estimated: roundCurrency(totalEstimated),
-    total: roundCurrency(totalEstimated), // Alias kompatibilitas frontend
-    created_at: slip.created_at,
-    updated_date: slip.updated_date,
+    created_at: toWibIsoString(slip.created_at),
+    updated_date: toWibIsoString(slip.updated_date),
   };
 }
 
-/**
- * Respons GET /slips/:id beserta items dan riwayat status.
- */
 export function toSlipDetailResponse(slip, { totalEstimated, totalQuantity }) {
   return {
     ...toSlipHeaderResponse(slip),
     total_estimated: roundCurrency(totalEstimated),
-    total: roundCurrency(totalEstimated),
     total_items: slip.items.length,
     total_quantity: totalQuantity,
     items: slip.items.map((item) => ({
       ...toSlipItemResponse(item),
-      created_at: item.created_at,
+      created_at: toWibIsoString(item.created_at),
     })),
     status_logs: (slip.status_logs || []).map(toStatusLogResponse),
-    created_at: slip.created_at,
-    updated_date: slip.updated_date,
+    created_at: toWibIsoString(slip.created_at),
+    updated_date: toWibIsoString(slip.updated_date),
   };
 }

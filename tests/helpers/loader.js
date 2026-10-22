@@ -1,4 +1,3 @@
-// Loads modules from src/ by path, so tests stay independent of how each module is exported.
 const SRC = new URL('../../src/', import.meta.url);
 
 export async function loadModule(relativePath) {

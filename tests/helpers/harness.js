@@ -10,15 +10,7 @@ export function stmt(via, sql, params = null) {
   return { via, sql: normalizeSql(sql), params };
 }
 
-/**
- * Runs the real Express app on an ephemeral port with the pg Pool stubbed at its boundary
- * (pool.query and pool.connect). Every statement is recorded in order, so tests can assert
- * the exact SQL, parameters and transaction boundaries without a real database.
- *
- * Queries are answered by routes registered with `h.db(...)`: [pattern, result] pairs where
- * pattern is a RegExp tested against the normalized SQL, and result is an array of rows or a
- * function (params, sql) returning rows (or throwing to simulate a database error).
- */
+// Runs the real app with the pg Pool stubbed: h.db([regex, rows | (params, sql) => rows]) answers matching SQL, and every statement is recorded.
 export function useHarness() {
   const h = {
     statements: [],
@@ -76,7 +68,6 @@ export function useHarness() {
     h.statements.length = 0;
     h.logs.length = 0;
     h.routes.length = 0;
-    // Captured (and silenced) so log side effects can be asserted; restored after each test.
     t.mock.method(console, 'warn', (...args) => h.logs.push(['warn', ...args]));
     t.mock.method(console, 'error', (...args) => h.logs.push(['error', ...args]));
   });
@@ -95,7 +86,6 @@ export function assertJson(res, status, expected) {
   assert.equal(res.text, JSON.stringify(expected));
 }
 
-// Asserts that errorHandler logged exactly one error with the given message.
 export function assertErrorLogged(h, message) {
   assert.equal(h.logs.length, 1);
   const [level, label, error] = h.logs[0];

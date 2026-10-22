@@ -1,4 +1,3 @@
--- Migration 005: Create pos_transaction_histories table
 CREATE TABLE IF NOT EXISTS pos_transaction_histories (
     id BIGSERIAL PRIMARY KEY,
     e_slip_id BIGINT REFERENCES e_slips(id) ON DELETE SET NULL,
@@ -13,7 +12,6 @@ CREATE TABLE IF NOT EXISTS pos_transaction_histories (
         CHECK (response_status IN ('SUCCESS', 'FAILED', 'OUTLET_MISMATCH', 'NOT_FOUND', 'EXPIRED')),
     response_message TEXT,
     
-    -- 4 Audit Fields Standard PMO
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(50) NOT NULL,
     updated_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -24,4 +22,3 @@ CREATE INDEX IF NOT EXISTS idx_pos_histories_barcode ON pos_transaction_historie
 CREATE INDEX IF NOT EXISTS idx_pos_histories_slip_id ON pos_transaction_histories(e_slip_id);
 CREATE INDEX IF NOT EXISTS idx_pos_histories_receipt ON pos_transaction_histories(receipt_number);
 CREATE INDEX IF NOT EXISTS idx_pos_histories_created_at ON pos_transaction_histories(created_at DESC);
-
