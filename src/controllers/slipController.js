@@ -1,99 +1,45 @@
-const defaultSlipService = require('../services/slipService');
+import * as slipService from '../services/slipService.js';
+import { handleControllerError, sendSuccess } from '../utils/httpResponse.js';
 
-class SlipController {
-  constructor(slipServiceInstance = defaultSlipService) {
-    this.slipService = slipServiceInstance;
-    this.createSlip = this.createSlip.bind(this);
-    this.getSlips = this.getSlips.bind(this);
-    this.getSlipDetail = this.getSlipDetail.bind(this);
-  }
+/**
+ * Endpoint POST /api/eslip/v1/slips
+ * Membuat E-Slip baru beserta detail item dan status log awal.
+ */
+export async function createSlip(req, res, next) {
+  try {
+    const result = await slipService.createSlip(req.body, req.user);
 
-  /**
-   * Endpoint POST /api/eslip/v1/slips
-   * Membuat E-Slip baru beserta detail item dan status log awal.
-   */
-  async createSlip(req, res, next) {
-    try {
-      const result = await this.slipService.createSlip(req.body, req.user);
-
-      return res.status(201).json({
-        success: true,
-        code: 'CREATED',
-        message: 'E-Slip berhasil dibuat',
-        data: result,
-      });
-    } catch (error) {
-      if (error.statusCode && error.statusCode < 500) {
-        return res.status(error.statusCode).json({
-          success: false,
-          code: error.code || 'BAD_REQUEST',
-          message: error.message || 'Gagal membuat E-Slip',
-          data: null,
-        });
-      }
-
-      next(error);
-    }
-  }
-
-  /**
-   * Endpoint GET /api/eslip/v1/slips
-   * Mengambil daftar E-Slip untuk toko user terautentikasi (dengan filter & pagination).
-   */
-  async getSlips(req, res, next) {
-    try {
-      const result = await this.slipService.getSlips(req.query, req.user);
-
-      return res.status(200).json({
-        success: true,
-        code: 'OK',
-        message: 'Daftar E-Slip berhasil diambil',
-        data: result,
-      });
-    } catch (error) {
-      if (error.statusCode && error.statusCode < 500) {
-        return res.status(error.statusCode).json({
-          success: false,
-          code: error.code || 'BAD_REQUEST',
-          message: error.message || 'Gagal mengambil daftar E-Slip',
-          data: null,
-        });
-      }
-
-      next(error);
-    }
-  }
-
-  /**
-   * Endpoint GET /api/eslip/v1/slips/:id
-   * Mengambil detail satu E-Slip berdasarkan ID atau nomor slip / barcode.
-   */
-  async getSlipDetail(req, res, next) {
-    try {
-      const { id } = req.params;
-      const result = await this.slipService.getSlipDetail(id, req.user);
-
-      return res.status(200).json({
-        success: true,
-        code: 'OK',
-        message: 'Detail E-Slip berhasil diambil',
-        data: result,
-      });
-    } catch (error) {
-      if (error.statusCode && error.statusCode < 500) {
-        return res.status(error.statusCode).json({
-          success: false,
-          code: error.code || 'BAD_REQUEST',
-          message: error.message || 'Gagal mengambil detail E-Slip',
-          data: null,
-        });
-      }
-
-      next(error);
-    }
+    return sendSuccess(res, 201, 'CREATED', 'E-Slip berhasil dibuat', result);
+  } catch (error) {
+    return handleControllerError(error, res, next, { code: 'BAD_REQUEST', message: 'Gagal membuat E-Slip' });
   }
 }
 
-module.exports = new SlipController();
-module.exports.SlipController = SlipController;
+/**
+ * Endpoint GET /api/eslip/v1/slips
+ * Mengambil daftar E-Slip untuk toko user terautentikasi (dengan filter & pagination).
+ */
+export async function getSlips(req, res, next) {
+  try {
+    const result = await slipService.getSlips(req.query, req.user);
 
+    return sendSuccess(res, 200, 'OK', 'Daftar E-Slip berhasil diambil', result);
+  } catch (error) {
+    return handleControllerError(error, res, next, { code: 'BAD_REQUEST', message: 'Gagal mengambil daftar E-Slip' });
+  }
+}
+
+/**
+ * Endpoint GET /api/eslip/v1/slips/:id
+ * Mengambil detail satu E-Slip berdasarkan ID atau nomor slip / barcode.
+ */
+export async function getSlipDetail(req, res, next) {
+  try {
+    const { id } = req.params;
+    const result = await slipService.getSlipDetail(id, req.user);
+
+    return sendSuccess(res, 200, 'OK', 'Detail E-Slip berhasil diambil', result);
+  } catch (error) {
+    return handleControllerError(error, res, next, { code: 'BAD_REQUEST', message: 'Gagal mengambil detail E-Slip' });
+  }
+}

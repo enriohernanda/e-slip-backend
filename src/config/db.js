@@ -1,7 +1,7 @@
-const { Pool } = require('pg');
+import { Pool } from 'pg';
 
 // Inisialisasi PostgreSQL Connection Pool menggunakan kredensial dari .env
-const pool = new Pool({
+export const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT, 10) || 5432,
   user: process.env.DB_USER || 'postgres',
@@ -20,7 +20,6 @@ pool.on('error', (err) => {
   console.error('[DB Error] Kesalahan pada PostgreSQL Pool:', err.message);
 });
 
-module.exports = {
-  pool,
-  query: (text, params) => pool.query(text, params),
-};
+export function query(text, params) {
+  return pool.query(text, params);
+}

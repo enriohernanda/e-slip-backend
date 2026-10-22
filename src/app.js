@@ -1,10 +1,11 @@
-const express = require('express');
-const cors = require('cors');
-const authController = require('./controllers/authController');
-const slipRoutes = require('./routes/slipRoutes');
-const errorHandler = require('./middlewares/errorHandler');
+import express from 'express';
+import cors from 'cors';
+import { authRoutes } from './routes/authRoutes.js';
+import { slipRoutes } from './routes/slipRoutes.js';
+import { errorHandler } from './middlewares/errorHandler.js';
+import { sendError } from './utils/httpResponse.js';
 
-const app = express();
+export const app = express();
 
 // Middleware global
 app.use(cors());
@@ -19,22 +20,15 @@ app.get('/', (req, res) => {
 });
 
 // Endpoint Autentikasi
-app.post('/api/eslip/v1/auth/login', authController.login);
+app.use('/api/eslip/v1/auth', authRoutes);
 
 // Endpoint Transaksi E-Slip
 app.use('/api/eslip/v1/slips', slipRoutes);
 
 // Handler untuk route yang tidak ditemukan (404)
 app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    code: 'NOT_FOUND',
-    message: `Endpoint ${req.method} ${req.originalUrl} tidak ditemukan`,
-    data: null,
-  });
+  sendError(res, 404, 'NOT_FOUND', `Endpoint ${req.method} ${req.originalUrl} tidak ditemukan`);
 });
 
 // Error handling middleware terpusat
 app.use(errorHandler);
-
-module.exports = app;

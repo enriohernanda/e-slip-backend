@@ -2,14 +2,16 @@
  * Runner Script Migrasi Database PostgreSQL
  * Menggunakan pg (node-postgres)
  */
-require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
+import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+
+dotenv.config();
 
 async function runMigration() {
   let pg;
   try {
-    pg = require('pg');
+    ({ default: pg } = await import('pg'));
   } catch (err) {
     console.error('\n[PERHATIAN] Driver "pg" belum terinstall.');
     console.log('Jalankan perintah berikut di folder e-slip-backend:');
@@ -37,7 +39,7 @@ async function runMigration() {
     const client = await pool.connect();
     console.log('Berhasil terhubung ke database.');
 
-    const schemaPath = path.join(__dirname, 'schema.sql');
+    const schemaPath = path.join(import.meta.dirname, 'schema.sql');
     const sql = fs.readFileSync(schemaPath, 'utf8');
 
     console.log('Mengeksekusi skema tabel...');
