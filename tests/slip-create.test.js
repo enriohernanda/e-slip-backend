@@ -1,7 +1,7 @@
 import { beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { assertErrorLogged, assertJson, stmt, useHarness } from './helpers/harness.js';
-import { ACTIVE_USER, DATE_PART, FIXED_NOW, Q, SQL, TOKEN, dbError } from './helpers/fixtures.js';
+import { ACTIVE_USER, DATE_PART, FIXED_NOW, Q, SERVER_ERROR, SQL, TOKEN, dbError } from './helpers/fixtures.js';
 
 const h = useHarness();
 
@@ -12,7 +12,6 @@ function money(value) {
   return value === null ? null : Number(value).toFixed(2);
 }
 
-// Simulates the rows PostgreSQL returns for the create transaction.
 function createRoutes({ user = ACTIVE_USER, lastSlipNumber = [], failOn } = {}) {
   let itemId = 100;
   const fail = (pattern) => (failOn === pattern ? () => { throw dbError('insert failed'); } : null);
@@ -109,14 +108,10 @@ describe('POST /api/eslip/v1/slips — validation (422, first failure wins)', ()
     });
   }
 
-  it('non-string customer name crashes with 500 (TypeError message)', async () => {
+  it('non-string customer name crashes with a generic 500 (TypeError only in the log)', async () => {
     const res = await h.request('POST', CREATE, { token: TOKEN, body: { ...VALID, customer_name: 123 } });
-    assertJson(res, 500, {
-      success: false,
-      code: 'INTERNAL_SERVER_ERROR',
-      message: '(body.customer_name || "").trim is not a function',
-      data: null,
-    });
+    assertJson(res, 500, SERVER_ERROR);
+    assertErrorLogged(h, '(body.customer_name || "").trim is not a function');
   });
 });
 
@@ -157,7 +152,7 @@ describe('POST /api/eslip/v1/slips — successful create', () => {
         store_code: 'STORE-10011',
         outlet_id: '10011',
         created_by_user_id: '1',
-        expired_at: '2026-10-22T05:00:00.000Z',
+        expired_at: '2026-10-22T12:00:00+07:00',
         total_estimated: 9348000,
         total_items: 2,
         total_quantity: 5,
@@ -165,7 +160,7 @@ describe('POST /api/eslip/v1/slips — successful create', () => {
           { id: '101', sku: 'SKU-TV-LG-43', item_name: 'LG Smart TV 43', quantity: 2, original_price: 4599000, discount_price: 4299000, effective_price: 4299000, subtotal: 8598000 },
           { id: '102', sku: 'SKU-BRKT-WALL', item_name: 'Bracket TV', quantity: 3, original_price: 250000, discount_price: null, effective_price: 250000, subtotal: 750000 },
         ],
-        created_at: '2026-10-22T03:00:00.000Z',
+        created_at: '2026-10-22T10:00:00+07:00',
       },
     });
 
@@ -256,6 +251,14 @@ describe('POST /api/eslip/v1/slips — successful create', () => {
     });
   }
 
+  it('slip number uses the WIB date while UTC is still the previous day', async (t) => {
+    // 2026-10-21 23:30 UTC = 2026-10-22 06:30 WIB
+    t.mock.timers.enable({ apis: ['Date'], now: Date.UTC(2026, 9, 21, 23, 30, 0) });
+    createRoutes();
+    await h.request('POST', CREATE, { token: TOKEN, body: VALID });
+    assert.equal(paramsOf(Q.insertSlip)[0][0], `10011${DATE_PART}000001`);
+  });
+
   const outletCases = [
     ['STORE-10011', '10011'],
     ['TOKO-7', '00007'],
@@ -288,7 +291,7 @@ describe('POST /api/eslip/v1/slips — database failure', () => {
         token: TOKEN,
         body: { customer_name: 'Budi', items: [VALID_ITEM, VALID_ITEM] },
       });
-      assertJson(res, 500, { success: false, code: 'INTERNAL_SERVER_ERROR', message: 'insert failed', data: null });
+      assertJson(res, 500, SERVER_ERROR);
       assertErrorLogged(h, 'insert failed');
       const sqls = h.statements.map((s) => s.sql);
       assert.equal(sqls.filter((sql) => /^INSERT/.test(sql)).length, inserted + 1);

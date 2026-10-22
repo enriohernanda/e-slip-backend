@@ -1,22 +1,10 @@
-/**
- * Validasi payload pembuatan E-Slip
- */
 import { createHttpError } from '../utils/httpError.js';
 import { roundCurrency } from '../utils/money.js';
 
-// Semua kegagalan validasi dijawab 422 VALIDATION_ERROR
 function validationError(message) {
   return createHttpError(422, 'VALIDATION_ERROR', message);
 }
 
-/**
- * Memvalidasi request body pembuatan E-Slip.
- * Melempar error dengan statusCode 422 jika data tidak valid.
- * Mengembalikan objek data yang telah disanitasi.
- *
- * @param {Object} body
- * @returns {Object} Sanitized data
- */
 export function validateCreateSlip(body) {
   if (!body || typeof body !== 'object') {
     throw validationError('Request body tidak boleh kosong');
@@ -29,7 +17,6 @@ export function validateCreateSlip(body) {
   const spoNumber = (body.spo_number || '').trim();
   const rawItems = body.items;
 
-  // 1. Validasi Nama Customer
   if (!customerName) {
     throw validationError('Nama customer wajib diisi');
   }
@@ -38,12 +25,10 @@ export function validateCreateSlip(body) {
     throw validationError('Nama customer maksimal 255 karakter');
   }
 
-  // 2. Validasi Nomor Telepon (opsional)
   if (customerPhone && customerPhone.length > 20) {
     throw validationError('Nomor HP customer maksimal 20 karakter');
   }
 
-  // 3. Validasi SPO
   if (isSpo && !spoNumber) {
     throw validationError('Nomor SPO wajib diisi jika transaksi menggunakan SPO');
   }
@@ -52,7 +37,6 @@ export function validateCreateSlip(body) {
     throw validationError('Nomor SPO maksimal 50 karakter');
   }
 
-  // 4. Validasi Daftar Item
   if (!Array.isArray(rawItems) || rawItems.length === 0) {
     throw validationError('E-Slip wajib memiliki minimal 1 item produk');
   }

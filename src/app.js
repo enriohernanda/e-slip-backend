@@ -8,11 +8,9 @@ import { sendError } from './utils/httpResponse.js';
 
 export const app = express();
 
-// Middleware global
 app.use(cors());
 app.use(express.json());
 
-// Healthcheck endpoint untuk mengecek status API
 app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
@@ -20,19 +18,12 @@ app.get('/', (req, res) => {
   });
 });
 
-// Endpoint Autentikasi
 app.use('/api/eslip/v1/auth', authRoutes);
-
-// Endpoint Transaksi E-Slip
 app.use('/api/eslip/v1/slips', slipRoutes);
-
-// Endpoint Katalog Item
 app.use('/api/eslip/v1/items', itemRoutes);
 
-// Handler untuk route yang tidak ditemukan (404)
 app.use((req, res) => {
   sendError(res, 404, 'NOT_FOUND', `Endpoint ${req.method} ${req.originalUrl} tidak ditemukan`);
 });
 
-// Error handling middleware terpusat
 app.use(errorHandler);

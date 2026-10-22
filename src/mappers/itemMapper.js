@@ -1,6 +1,3 @@
-/**
- * Pemetaan baris katalog item menjadi struktur respons API (harga sebagai number).
- */
 export function toCatalogItemResponse(item) {
   return {
     sku: item.sku,

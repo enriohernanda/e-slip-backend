@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { assertJson, stmt, useHarness } from './helpers/harness.js';
-import { ACTIVE_USER, Q, SQL, TOKEN, dbError } from './helpers/fixtures.js';
+import { assertErrorLogged, assertJson, stmt, useHarness } from './helpers/harness.js';
+import { ACTIVE_USER, Q, SERVER_ERROR, SQL, TOKEN, dbError } from './helpers/fixtures.js';
 
 const h = useHarness();
 
@@ -93,10 +93,11 @@ describe('GET /api/eslip/v1/slips/:id — lookup', () => {
     assert.equal(h.statements.length, 5);
   });
 
-  it('database error → 500', async () => {
+  it('database error with a PostgreSQL code → generic 500, the code is not exposed', async () => {
     h.db([Q.findUserByNik, [ACTIVE_USER]], [Q.slipLookup, () => { throw dbError('lookup failed', '57P01'); }]);
     const res = await h.request('GET', '/api/eslip/v1/slips/9', { token: TOKEN });
-    assertJson(res, 500, { success: false, code: '57P01', message: 'lookup failed', data: null });
+    assertJson(res, 500, SERVER_ERROR);
+    assertErrorLogged(h, 'lookup failed');
   });
 });
 
@@ -121,23 +122,23 @@ describe('GET /api/eslip/v1/slips/:id — response mapping', () => {
         outlet_id: '10011',
         created_by_user_id: '2',
         created_by: 'SALES-10011-002',
-        expired_at: '2026-10-22T05:00:00.000Z',
-        locked_at: '2026-10-22T04:00:00.000Z',
+        expired_at: '2026-10-22T12:00:00+07:00',
+        locked_at: '2026-10-22T11:00:00+07:00',
         paid_at: null,
         cancelled_at: null,
         total_estimated: 35,
         total_items: 2,
         total_quantity: 5,
         items: [
-          { id: '1', sku: 'A', item_name: 'Kulkas', quantity: 2, original_price: 10, discount_price: null, effective_price: 10, subtotal: 20, created_at: '2026-10-22T03:00:00.000Z' },
-          { id: '2', sku: 'B', item_name: 'Kabel', quantity: 3, original_price: 5.5, discount_price: 5, effective_price: 5, subtotal: 15, created_at: '2026-10-22T03:00:01.000Z' },
+          { id: '1', sku: 'A', item_name: 'Kulkas', quantity: 2, original_price: 10, discount_price: null, effective_price: 10, subtotal: 20, created_at: '2026-10-22T10:00:00+07:00' },
+          { id: '2', sku: 'B', item_name: 'Kabel', quantity: 3, original_price: 5.5, discount_price: 5, effective_price: 5, subtotal: 15, created_at: '2026-10-22T10:00:01+07:00' },
         ],
         status_logs: [
-          { id: '1', previous_status: null, new_status: 'Open', changed_by: 'SALES-10011-002', change_source: 'SALES_APP', notes: 'dibuat', created_at: '2026-10-22T03:00:00.000Z' },
-          { id: '2', previous_status: 'Open', new_status: 'Locked', changed_by: 'KASIR-002', change_source: 'POS', notes: null, created_at: '2026-10-22T04:00:00.000Z' },
+          { id: '1', previous_status: null, new_status: 'Open', changed_by: 'SALES-10011-002', change_source: 'SALES_APP', notes: 'dibuat', created_at: '2026-10-22T10:00:00+07:00' },
+          { id: '2', previous_status: 'Open', new_status: 'Locked', changed_by: 'KASIR-002', change_source: 'POS', notes: null, created_at: '2026-10-22T11:00:00+07:00' },
         ],
-        created_at: '2026-10-22T03:00:00.000Z',
-        updated_date: '2026-10-22T04:00:00.000Z',
+        created_at: '2026-10-22T10:00:00+07:00',
+        updated_date: '2026-10-22T11:00:00+07:00',
       },
     });
   });

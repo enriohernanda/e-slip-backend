@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { assertErrorLogged, assertJson, useHarness } from './helpers/harness.js';
+import { assertJson, useHarness } from './helpers/harness.js';
 
 const h = useHarness();
 
@@ -58,11 +58,16 @@ describe('app shell', () => {
     });
   }
 
-  it('malformed JSON returns 400 with INTERNAL_SERVER_ERROR code and is logged', async () => {
+  it('malformed JSON returns 400 BAD_REQUEST without the parser message and is not logged', async () => {
     const res = await h.request('POST', '/api/eslip/v1/auth/login', { raw: '{bad' });
-    const message = "Expected property name or '}' in JSON at position 1 (line 1 column 2)";
-    assertJson(res, 400, { success: false, code: 'INTERNAL_SERVER_ERROR', message, data: null });
-    assertErrorLogged(h, message);
+    assertJson(res, 400, { success: false, code: 'BAD_REQUEST', message: 'Request body bukan JSON yang valid', data: null });
+    assert.deepEqual(h.logs, []);
+  });
+
+  it('body over the 100kb JSON limit returns 413 PAYLOAD_TOO_LARGE', async () => {
+    const res = await h.request('POST', '/api/eslip/v1/auth/login', { raw: `"${'x'.repeat(110 * 1024)}"` });
+    assertJson(res, 413, { success: false, code: 'PAYLOAD_TOO_LARGE', message: 'Ukuran request body melebihi batas', data: null });
+    assert.deepEqual(h.logs, []);
   });
 
   it('login route tolerates a trailing slash', async () => {

@@ -1,13 +1,5 @@
--- =============================================================================
--- E-SLIP DATABASE MIGRATION (DDL)
--- Database Engine: PostgreSQL 14+
--- Standard Enterprise PMO Trans Retail (4 Audit Fields pada setiap tabel)
--- =============================================================================
-
--- Pastikan ekstensi UUID tersedia jika dibutuhkan di masa mendatang
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Hapus tabel lama jika ada (urutan child ke parent)
 DROP TABLE IF EXISTS spo_items CASCADE;
 DROP TABLE IF EXISTS pos_transaction_histories CASCADE;
 DROP TABLE IF EXISTS e_slip_status_logs CASCADE;
@@ -15,9 +7,6 @@ DROP TABLE IF EXISTS e_slip_items CASCADE;
 DROP TABLE IF EXISTS e_slips CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
--- =============================================================================
--- 1. TABEL USERS (Data Pengguna / Sales)
--- =============================================================================
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
     nik VARCHAR(30) UNIQUE NOT NULL,
@@ -28,7 +17,6 @@ CREATE TABLE users (
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     last_synced_at TIMESTAMP WITH TIME ZONE,
     
-    -- 4 Audit Fields Standard PMO
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(50) NOT NULL DEFAULT 'SYSTEM',
     updated_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -38,9 +26,6 @@ CREATE TABLE users (
 CREATE INDEX idx_users_store_code ON users(store_code);
 CREATE INDEX idx_users_active ON users(is_active);
 
--- =============================================================================
--- 2. TABEL E_SLIPS (Header Transaksi E-Slip)
--- =============================================================================
 CREATE TABLE e_slips (
     id BIGSERIAL PRIMARY KEY,
     slip_number VARCHAR(20) UNIQUE NOT NULL,
@@ -56,20 +41,17 @@ CREATE TABLE e_slips (
     outlet_id VARCHAR(10) NOT NULL,
     created_by_user_id BIGINT NOT NULL REFERENCES users(id) ON UPDATE CASCADE ON DELETE RESTRICT,
     
-    -- Status Timestamp Tracking
     expired_at TIMESTAMP WITH TIME ZONE NOT NULL,
     locked_at TIMESTAMP WITH TIME ZONE,
     paid_at TIMESTAMP WITH TIME ZONE,
     cancelled_at TIMESTAMP WITH TIME ZONE,
     
-    -- 4 Audit Fields Standard PMO
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(50) NOT NULL,
     updated_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(50) NOT NULL
 );
 
--- Indexing untuk performa pencarian dan filtering
 CREATE INDEX idx_eslips_barcode ON e_slips(barcode);
 CREATE INDEX idx_eslips_store_code ON e_slips(store_code);
 CREATE INDEX idx_eslips_outlet_id ON e_slips(outlet_id);
@@ -79,9 +61,6 @@ CREATE INDEX idx_eslips_created_at ON e_slips(created_at DESC);
 CREATE INDEX idx_eslips_expired_status ON e_slips(status, expired_at);
 CREATE INDEX idx_eslips_user ON e_slips(created_by_user_id);
 
--- =============================================================================
--- 3. TABEL E_SLIP_ITEMS (Detail Baris Produk)
--- =============================================================================
 CREATE TABLE e_slip_items (
     id BIGSERIAL PRIMARY KEY,
     e_slip_id BIGINT NOT NULL REFERENCES e_slips(id) ON DELETE CASCADE,
@@ -93,7 +72,6 @@ CREATE TABLE e_slip_items (
     effective_price DECIMAL(15, 2) NOT NULL CHECK (effective_price >= 0),
     subtotal DECIMAL(15, 2) NOT NULL CHECK (subtotal >= 0),
     
-    -- 4 Audit Fields Standard PMO
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(50) NOT NULL,
     updated_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -103,9 +81,6 @@ CREATE TABLE e_slip_items (
 CREATE INDEX idx_eslip_items_slip_id ON e_slip_items(e_slip_id);
 CREATE INDEX idx_eslip_items_sku ON e_slip_items(sku);
 
--- =============================================================================
--- 4. TABEL E_SLIP_STATUS_LOGS (Lifecycle Domain Audit)
--- =============================================================================
 CREATE TABLE e_slip_status_logs (
     id BIGSERIAL PRIMARY KEY,
     e_slip_id BIGINT NOT NULL REFERENCES e_slips(id) ON DELETE CASCADE,
@@ -115,7 +90,6 @@ CREATE TABLE e_slip_status_logs (
     change_source VARCHAR(20) NOT NULL CHECK (change_source IN ('SALES_APP', 'POS', 'SYSTEM_JOB')),
     notes TEXT,
     
-    -- 4 Audit Fields Standard PMO
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(50) NOT NULL,
     updated_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -125,9 +99,6 @@ CREATE TABLE e_slip_status_logs (
 CREATE INDEX idx_status_logs_slip_id ON e_slip_status_logs(e_slip_id);
 CREATE INDEX idx_status_logs_created_at ON e_slip_status_logs(created_at DESC);
 
--- =============================================================================
--- 5. TABEL POS_TRANSACTION_HISTORIES (Integrasi POS: Inquiry & Update PAID)
--- =============================================================================
 CREATE TABLE pos_transaction_histories (
     id BIGSERIAL PRIMARY KEY,
     e_slip_id BIGINT REFERENCES e_slips(id) ON DELETE SET NULL,
@@ -142,7 +113,6 @@ CREATE TABLE pos_transaction_histories (
         CHECK (response_status IN ('SUCCESS', 'FAILED', 'OUTLET_MISMATCH', 'NOT_FOUND', 'EXPIRED')),
     response_message TEXT,
     
-    -- 4 Audit Fields Standard PMO
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(50) NOT NULL,
     updated_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -154,9 +124,6 @@ CREATE INDEX idx_pos_histories_slip_id ON pos_transaction_histories(e_slip_id);
 CREATE INDEX idx_pos_histories_receipt ON pos_transaction_histories(receipt_number);
 CREATE INDEX idx_pos_histories_created_at ON pos_transaction_histories(created_at DESC);
 
--- =============================================================================
--- 6. TABEL SPO_ITEMS (Detail Validasi SPO dari ERP)
--- =============================================================================
 CREATE TABLE spo_items (
     id BIGSERIAL PRIMARY KEY,
     e_slip_id BIGINT NOT NULL REFERENCES e_slips(id) ON DELETE CASCADE,
@@ -165,7 +132,6 @@ CREATE TABLE spo_items (
     quantity INTEGER NOT NULL CHECK (quantity > 0),
     fetched_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     
-    -- 4 Audit Fields Standard PMO
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(50) NOT NULL,
     updated_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -174,4 +140,3 @@ CREATE TABLE spo_items (
 
 CREATE INDEX idx_spo_items_slip_id ON spo_items(e_slip_id);
 CREATE INDEX idx_spo_items_spo_number ON spo_items(spo_number);
-

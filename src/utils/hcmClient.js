@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// Simulasi database internal HCM eksternal untuk pengujian lokal
 const MOCK_HCM_USERS = [
   {
     external_user_id: 'HCM-101',
@@ -32,7 +31,6 @@ export async function authenticate(username, password) {
   if (isMock) {
     console.log(`[HCM Client Mock] Menerima request login untuk username: ${username}`);
 
-    // Cari user berdasarkan username (atau NIK jika diinputkan sebagai username)
     const user = MOCK_HCM_USERS.find((u) => (u.username === username || u.nik === username) && u.password === password);
 
     if (!user) {
@@ -49,7 +47,6 @@ export async function authenticate(username, password) {
       throw error;
     }
 
-    // Simulasi token dari HCM
     return {
       external_user_id: user.external_user_id,
       nik: user.nik,
@@ -62,7 +59,6 @@ export async function authenticate(username, password) {
     };
   }
 
-  // Nanti jika URL API HCM asli sudah diberikan oleh kantor:
   try {
     const response = await axios.post(
       `${process.env.HCM_API_BASE_URL}/auth/login`,

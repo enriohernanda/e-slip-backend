@@ -1,6 +1,5 @@
 import { normalizeSql } from './harness.js';
 
-// Expected SQL, whitespace-normalized, captured from the pre-refactor implementation.
 export const SQL = {
   findUserForLogin:
     'SELECT id, nik, name, username, password, store_code, is_active, last_synced_at, created_at, updated_date FROM users WHERE username = $1 LIMIT 1;',
@@ -52,7 +51,6 @@ export function listSlipsSql(whereClause, limitIndex) {
   );
 }
 
-// Route patterns (matched against normalized SQL).
 export const Q = {
   findUserForLogin: /FROM users WHERE username = \$1 LIMIT/,
   findUserByNik: /FROM users WHERE nik = \$1/,
@@ -68,7 +66,7 @@ export const Q = {
   insertStatusLog: /^INSERT INTO e_slip_status_logs/,
 };
 
-// A database row for the authenticated sales user (pg returns BIGINT as string).
+// pg returns BIGINT columns as strings.
 export const ACTIVE_USER = {
   id: '1',
   nik: 'SALES-10011-001',
@@ -81,9 +79,11 @@ export const ACTIVE_USER = {
 
 export const TOKEN = 'eslip-token-SALES-10011-001-1729000000000';
 
-// 2026-10-22 10:00 local time; slip numbers use the Node process local date.
-export const FIXED_NOW = new Date(2026, 9, 22, 10, 0, 0).getTime();
+// 2026-10-22 10:00 WIB (03:00 UTC); slip numbers use the WIB date whatever the machine time zone.
+export const FIXED_NOW = Date.UTC(2026, 9, 22, 3, 0, 0);
 export const DATE_PART = '261022';
+
+export const SERVER_ERROR = { success: false, code: 'INTERNAL_SERVER_ERROR', message: 'Terjadi kesalahan pada server', data: null };
 
 export function dbError(message, code) {
   const error = new Error(message);

@@ -1,38 +1,20 @@
 import * as authService from '../services/authService.js';
-import { handleControllerError, sendError, sendSuccess } from '../utils/httpResponse.js';
+import { sendError, sendSuccess } from '../utils/httpResponse.js';
 
-/**
- * Endpoint POST /api/eslip/v1/auth/login
- * Body: { "username": "aryan", "password": "password111" }
- */
-export async function login(req, res, next) {
-  try {
-    const { username, password } = req.body || {};
+export async function login(req, res) {
+  const { username, password } = req.body || {};
 
-    if (!username || !password) {
-      return sendError(res, 422, 'VALIDATION_ERROR', 'Username dan password wajib diisi!');
-    }
-
-    const result = await authService.login(username, password);
-
-    return sendSuccess(res, 200, 'OK', 'Login berhasil', result);
-  } catch (error) {
-    // Error yang diketahui (misal 401 UNAUTHORIZED atau 403 FORBIDDEN) dijawab langsung,
-    // error sistem/server yang tidak terduga diserahkan ke errorHandler middleware
-    return handleControllerError(error, res, next, { code: 'UNAUTHORIZED', message: 'Login gagal' });
+  if (!username || !password) {
+    return sendError(res, 422, 'VALIDATION_ERROR', 'Username dan password wajib diisi!');
   }
+
+  const result = await authService.login(username, password);
+
+  return sendSuccess(res, 200, 'OK', 'Login berhasil', result);
 }
 
-/**
- * Endpoint GET /api/eslip/v1/auth/me
- * Mengembalikan profil user dari token (terproteksi authMiddleware).
- */
-export async function getProfile(req, res, next) {
-  try {
-    const result = await authService.getProfile(req.user.nik);
+export async function getProfile(req, res) {
+  const result = await authService.getProfile(req.user.nik);
 
-    return sendSuccess(res, 200, 'OK', 'Profil pengguna berhasil diambil', result);
-  } catch (error) {
-    return handleControllerError(error, res, next, { code: 'BAD_REQUEST', message: 'Gagal mengambil profil pengguna' });
-  }
+  return sendSuccess(res, 200, 'OK', 'Profil pengguna berhasil diambil', result);
 }

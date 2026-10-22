@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { assertErrorLogged, assertJson, stmt, useHarness } from './helpers/harness.js';
-import { ACTIVE_USER, Q, SQL, TOKEN, countSlipsSql, dbError, listSlipsSql, searchCondition, where } from './helpers/fixtures.js';
+import { ACTIVE_USER, Q, SERVER_ERROR, SQL, TOKEN, countSlipsSql, dbError, listSlipsSql, searchCondition, where } from './helpers/fixtures.js';
 
 const h = useHarness();
 
@@ -113,11 +113,10 @@ describe('GET /api/eslip/v1/slips — query building', () => {
   });
 
   for (const param of ['status', 'search']) {
-    it(`repeated ${param} parameter crashes with 500 before any slip query`, async () => {
+    it(`repeated ${param} parameter crashes with a generic 500 before any slip query`, async () => {
       const res = await list(`?${param}=a&${param}=b`);
-      const message = `queryParams.${param}.trim is not a function`;
-      assertJson(res, 500, { success: false, code: 'INTERNAL_SERVER_ERROR', message, data: null });
-      assertErrorLogged(h, message);
+      assertJson(res, 500, SERVER_ERROR);
+      assertErrorLogged(h, `queryParams.${param}.trim is not a function`);
       assert.deepEqual(h.statements, [stmt('pool', SQL.findUserByNik, [NIK])]);
     });
   }
@@ -125,7 +124,8 @@ describe('GET /api/eslip/v1/slips — query building', () => {
   it('database error → 500', async () => {
     h.db([Q.findUserByNik, [ACTIVE_USER]], [Q.list, () => { throw dbError('list failed'); }]);
     const res = await h.request('GET', LIST, { token: TOKEN });
-    assertJson(res, 500, { success: false, code: 'INTERNAL_SERVER_ERROR', message: 'list failed', data: null });
+    assertJson(res, 500, SERVER_ERROR);
+    assertErrorLogged(h, 'list failed');
   });
 });
 
@@ -177,15 +177,15 @@ describe('GET /api/eslip/v1/slips — response mapping', () => {
             outlet_id: '10011',
             created_by_user_id: '1',
             created_by: NIK,
-            expired_at: '2026-10-22T05:00:00.000Z',
+            expired_at: '2026-10-22T12:00:00+07:00',
             locked_at: null,
             paid_at: null,
             cancelled_at: null,
             total_items: 3,
             total_quantity: 9,
             total_estimated: 100.01,
-            created_at: '2026-10-22T03:00:00.000Z',
-            updated_date: '2026-10-22T03:30:00.000Z',
+            created_at: '2026-10-22T10:00:00+07:00',
+            updated_date: '2026-10-22T10:30:00+07:00',
           },
           { id: '6', total_items: 0, total_quantity: 0, total_estimated: 0 },
         ],

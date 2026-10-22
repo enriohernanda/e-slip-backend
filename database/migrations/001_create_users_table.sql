@@ -1,4 +1,3 @@
--- Migration 001: Create users table
 CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
     nik VARCHAR(30) UNIQUE NOT NULL,
@@ -9,7 +8,6 @@ CREATE TABLE IF NOT EXISTS users (
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     last_synced_at TIMESTAMP WITH TIME ZONE,
     
-    -- 4 Audit Fields Standard PMO
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(50) NOT NULL DEFAULT 'SYSTEM',
     updated_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -18,4 +16,3 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE INDEX IF NOT EXISTS idx_users_store_code ON users(store_code);
 CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active);
-

@@ -1,7 +1,3 @@
-/**
- * Runner Script Migrasi Database PostgreSQL
- * Menggunakan pg (node-postgres)
- */
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
@@ -63,4 +59,3 @@ async function runMigration() {
 }
 
 runMigration();
-

@@ -1,5 +1,3 @@
-// Modules (and functions) that no route uses today. They are kept by decision D2,
-// so their current behavior is pinned here to guard the ES Modules conversion.
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';

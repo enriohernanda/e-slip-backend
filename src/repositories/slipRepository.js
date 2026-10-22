@@ -1,29 +1,16 @@
 import * as db from '../config/db.js';
+import { toWibDateCode } from '../utils/dateTime.js';
 
-/**
- * Menghasilkan slip_number baru secara aman dari race condition menggunakan PostgreSQL Advisory Lock.
- * Format: [outlet 5][YYMMDD][seq 6]
- * Contoh: 10011261021000001
- *
- * @param {Object} client - Transactional pg client
- * @param {string} outletId - 5-digit outlet ID
- * @returns {Promise<string>}
- */
+// Format: [outlet 5][YYMMDD WIB][seq 6], contoh 10011261021000001
 async function generateSlipNumber(client, outletId) {
-  const now = new Date();
-  const yy = String(now.getFullYear()).slice(-2);
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  const datePart = `${yy}${mm}${dd}`;
+  const datePart = toWibDateCode(new Date());
 
-  // Pastikan outletId tepat 5 karakter
   const cleanOutlet = String(outletId || '10011').padStart(5, '0').slice(-5);
   const prefix = `${cleanOutlet}${datePart}`;
 
-  // Kunci advisory lock berbasis hash prefix untuk mencegah duplicate sequence
+  // Advisory lock per prefix agar request paralel tidak mendapat sequence yang sama
   await client.query('SELECT pg_advisory_xact_lock(hashtext($1));', [prefix]);
 
-  // Cari sequence terakhir untuk prefix hari ini
   const query = `
     SELECT slip_number 
     FROM e_slips 
@@ -47,25 +34,15 @@ async function generateSlipNumber(client, outletId) {
   return `${prefix}${paddedSeq}`;
 }
 
-/**
- * Menyimpan E-Slip, baris items, dan initial status log dalam satu transaksi atomik.
- *
- * @param {Object} slipData
- * @param {Array} items
- * @param {Object} user
- * @returns {Promise<Object>}
- */
 export async function createSlipWithTransaction(slipData, items, user) {
   const client = await db.pool.connect();
 
   try {
     await client.query('BEGIN');
 
-    // 1. Generate unique slip number & barcode
     const slipNumber = await generateSlipNumber(client, user.outlet_id);
     const barcode = slipNumber; // Sesuai spesifikasi ERD: barcode = slip_number pada MVP
 
-    // 2. Insert E-Slip header
     const insertSlipQuery = `
       INSERT INTO e_slips (
         slip_number,
@@ -113,7 +90,6 @@ export async function createSlipWithTransaction(slipData, items, user) {
     const { rows: slipRows } = await client.query(insertSlipQuery, slipValues);
     const createdSlip = slipRows[0];
 
-    // 3. Insert E-Slip Items (snapshot)
     const insertedItems = [];
     for (const item of items) {
       const insertItemQuery = `
@@ -155,7 +131,6 @@ export async function createSlipWithTransaction(slipData, items, user) {
       insertedItems.push(itemRows[0]);
     }
 
-    // 4. Insert Initial Status Log (Open)
     const insertLogQuery = `
       INSERT INTO e_slip_status_logs (
         e_slip_id,
@@ -177,7 +152,6 @@ export async function createSlipWithTransaction(slipData, items, user) {
 
     await client.query(insertLogQuery, [createdSlip.id, user.nik]);
 
-    // Commit transaksi jika seluruh query berhasil
     await client.query('COMMIT');
 
     return {
@@ -185,7 +159,6 @@ export async function createSlipWithTransaction(slipData, items, user) {
       items: insertedItems,
     };
   } catch (error) {
-    // Rollback jika terjadi kegagalan pada salah satu operasi
     await client.query('ROLLBACK');
     throw error;
   } finally {
@@ -193,9 +166,6 @@ export async function createSlipWithTransaction(slipData, items, user) {
   }
 }
 
-/**
- * Mengupdate status slip yang Open dan sudah melewati batas waktu 2 jam menjadi 'Expired'.
- */
 export async function expireTimeoutSlips() {
   const query = `
     UPDATE e_slips
@@ -205,18 +175,11 @@ export async function expireTimeoutSlips() {
   await db.query(query);
 }
 
-/**
- * Menyusun klausa WHERE dan parameter untuk filter daftar E-Slip.
- * Dipakai bersama oleh findSlips dan countSlips agar data dan total pagination selalu konsisten.
- *
- * @returns {{ whereClause: string, values: Array, nextParamIndex: number }}
- */
 function buildSlipFilters({ store_code, status, search, is_spo, created_by }) {
   const conditions = [];
   const values = [];
   let paramIndex = 1;
 
-  // Filter wajib toko/outlet (security scoping per store)
   if (store_code) {
     conditions.push(`s.store_code = $${paramIndex++}`);
     values.push(store_code);
@@ -253,10 +216,6 @@ function buildSlipFilters({ store_code, status, search, is_spo, created_by }) {
   return { whereClause, values, nextParamIndex: paramIndex };
 }
 
-/**
- * Mengambil daftar E-Slip dengan filter dan pagination.
- * Mendukung filter store_code, status, is_spo, created_by, dan search kata kunci.
- */
 export async function findSlips(filters = {}) {
   await expireTimeoutSlips();
 
@@ -301,9 +260,6 @@ export async function findSlips(filters = {}) {
   return rows;
 }
 
-/**
- * Menghitung total data slip sesuai filter (untuk pagination).
- */
 export async function countSlips(filters = {}) {
   const { whereClause, values } = buildSlipFilters(filters);
   const countQuery = `SELECT COUNT(*)::INTEGER as total FROM e_slips s ${whereClause};`;
@@ -311,10 +267,6 @@ export async function countSlips(filters = {}) {
   return rows[0] ? rows[0].total : 0;
 }
 
-/**
- * Mengambil E-Slip detail beserta item dan status logs berdasarkan ID, slip_number, atau barcode.
- * @param {number|string} identifier
- */
 export async function findByIdOrSlipNumber(identifier) {
   await expireTimeoutSlips();
 
@@ -349,7 +301,6 @@ export async function findByIdOrSlipNumber(identifier) {
 
   const slip = slipRows[0];
 
-  // Ambil detail item produk
   const itemsQuery = `
     SELECT 
       id, e_slip_id, sku, item_name, quantity, original_price, discount_price, effective_price, subtotal, created_at
@@ -359,7 +310,6 @@ export async function findByIdOrSlipNumber(identifier) {
   `;
   const { rows: itemRows } = await db.query(itemsQuery, [slip.id]);
 
-  // Ambil riwayat status log
   const logsQuery = `
     SELECT 
       id, previous_status, new_status, changed_by, change_source, notes, created_at
@@ -376,10 +326,6 @@ export async function findByIdOrSlipNumber(identifier) {
   };
 }
 
-/**
- * Mengambil E-Slip berdasarkan ID (backward compatible)
- * @param {number|string} id
- */
 export async function findById(id) {
   return findByIdOrSlipNumber(id);
 }

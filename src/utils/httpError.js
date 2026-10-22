@@ -1,16 +1,15 @@
-/**
- * Membuat Error dengan statusCode dan code untuk diterjemahkan menjadi respons HTTP
- * oleh controller atau errorHandler.
- *
- * @param {number} statusCode
- * @param {string} code
- * @param {string} message
- * @returns {Error}
- */
+// Error yang kode dan pesannya aman dikirim ke client
+export class HttpError extends Error {
+  constructor(statusCode, code, message) {
+    super(message);
+    this.name = 'HttpError';
+    this.statusCode = statusCode;
+    this.code = code;
+  }
+}
+
 export function createHttpError(statusCode, code, message) {
-  const error = new Error(message);
-  error.statusCode = statusCode;
-  error.code = code;
+  const error = new HttpError(statusCode, code, message);
   // Stack trace dimulai dari pemanggil, bukan dari helper ini
   Error.captureStackTrace(error, createHttpError);
   return error;
